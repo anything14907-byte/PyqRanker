@@ -29,6 +29,11 @@ import { MobileBottomNav, ExtendedNavView } from './components/MobileBottomNav';
 import { Toast, ToastMessage } from './components/Toast';
 import { SearchIndexItem } from './utils/searchService';
 import { SpaceScene } from './components/SpaceScene';
+import { LiquidAuroraScene } from './components/LiquidAuroraScene';
+import { DynamicIsland } from './components/DynamicIsland';
+import { DeviceSyncModal } from './components/DeviceSyncModal';
+import { InstallAppModal } from './components/InstallAppModal';
+import { deviceSyncService, SyncPayload } from './services/deviceSyncService';
 
 function DashboardContent() {
   // 1. Multiple Exams State (Requirement 3)
@@ -66,6 +71,10 @@ function DashboardContent() {
   const [isAddSubjectOpen, setIsAddSubjectOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<SubjectMeta | null>(null);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [syncPeersCount, setSyncPeersCount] = useState(1);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   // Toast feedback
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -77,6 +86,42 @@ function DashboardContent() {
       setTicker(t => t + 1);
     }, 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Specular Liquid Rim Light Tracking: pointermove & touchmove -> --mouse-x, --mouse-y
+  useEffect(() => {
+    const updatePointer = (e: MouseEvent | TouchEvent) => {
+      let clientX = window.innerWidth / 2;
+      let clientY = window.innerHeight / 2;
+      if ('touches' in e && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else if ('clientX' in e) {
+        clientX = (e as MouseEvent).clientX;
+        clientY = (e as MouseEvent).clientY;
+      }
+      const x = Math.round((clientX / window.innerWidth) * 100);
+      const y = Math.round((clientY / window.innerHeight) * 100);
+      document.documentElement.style.setProperty('--mouse-x', `${x}%`);
+      document.documentElement.style.setProperty('--mouse-y', `${y}%`);
+    };
+
+    window.addEventListener('mousemove', updatePointer, { passive: true });
+    window.addEventListener('touchmove', updatePointer, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', updatePointer);
+      window.removeEventListener('touchmove', updatePointer);
+    };
+  }, []);
+
+  // PWA Native Install Prompt Capture
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
   const showToast = useCallback((text: string, type: 'success' | 'info' | 'error' = 'info') => {
@@ -118,6 +163,51 @@ function DashboardContent() {
       setActiveSubjectId('');
     }
   }, []);
+
+  // WebRTC PeerJS & BroadcastChannel Multi-Device State Sync
+  useEffect(() => {
+    const unsubSync = deviceSyncService.subscribe((msg: SyncPayload) => {
+      if (msg.type === 'SYNC_STATE' && msg.payload) {
+        try {
+          storageService.restoreBackup(msg.payload);
+          setExamSessions(storageService.getExamSessions());
+          const newActive = storageService.getActiveExam();
+          setActiveExamId(newActive);
+          reloadExamData(newActive);
+          showToast(`⚡ Synced live from ${msg.senderDevice}`, 'info');
+        } catch (e) {
+          console.error('Failed to apply sync state', e);
+        }
+      } else if (msg.type === 'VIEW_CHANGE' && msg.payload?.view) {
+        setCurrentView(msg.payload.view as MainNavView);
+        if (msg.payload.activeSubjectId) {
+          setActiveSubjectId(msg.payload.activeSubjectId);
+        }
+        showToast(`Navigated via ${msg.senderDevice}`, 'info');
+      } else if (msg.type === 'REQUEST_STATE') {
+        try {
+          const fullBackup = storageService.getBackupObject();
+          deviceSyncService.broadcastState(fullBackup);
+        } catch (e) {
+          console.error('Failed to broadcast state on request', e);
+        }
+      }
+    });
+
+    const unsubStatus = deviceSyncService.onStatus((status) => {
+      setSyncPeersCount(Math.max(1, status.connectedPeersCount));
+    });
+
+    return () => {
+      unsubSync();
+      unsubStatus();
+    };
+  }, [reloadExamData, showToast]);
+
+  const handleSelectView = (view: MainNavView) => {
+    setCurrentView(view);
+    deviceSyncService.syncView(view, activeSubjectId);
+  };
 
   // Exam switcher handlers (Requirement 3)
   const handleSelectExam = (examId: string) => {
@@ -500,35 +590,45 @@ function DashboardContent() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-paper-bg dark:bg-night-bg text-paper-ink dark:text-night-text transition-colors duration-200">
-      {/* Fixed Full-Viewport Space, Planets & Rockets Backdrop */}
-      <SpaceScene />
+    <div className="relative min-h-screen w-full bg-paper-bg dark:bg-[#070b14] text-paper-ink dark:text-night-text transition-colors duration-200">
+      {/* Living Fluid Aurora & Micro Caustic Wave Mesh Backdrop */}
+      <LiquidAuroraScene />
+
+      {/* Apple Dynamic Island Control Bar (Sync Status, Display Modes, Quick Actions) */}
+      <DynamicIsland
+        onOpenSyncModal={() => setIsSyncModalOpen(true)}
+        onOpenInstallModal={() => setIsInstallModalOpen(true)}
+        activeNotification={toasts[toasts.length - 1]?.text}
+      />
       
       <div className="relative z-10 w-full min-h-screen">
         {/* Top Header Bar with MULTIPLE EXAMS SWITCHER & GLOBAL SEARCH */}
         <Navbar
-        currentView={currentView}
-        onSelectView={setCurrentView}
-        subjects={subjects}
-        topics={topics}
-        questions={questions}
-        tasks={tasks}
-        videos={videos}
-        pdfs={pdfs}
-        flashcards={flashcards}
-        activeSubjectId={activeSubjectId}
-        onSelectSubject={handleSelectSubject}
-        onNavigateToTopic={handleNavigateToTopic}
-        onNavigateToSubject={handleNavigateToSubject}
-        onNavigateToSearchResult={handleNavigateToSearchResult}
-        onOpenBackup={() => setIsBackupModalOpen(true)}
-        examSessions={examSessions}
-        activeExamId={activeExamId}
-        onSelectExam={handleSelectExam}
-        onAddExam={handleAddExam}
-        onRenameExam={handleRenameExam}
-        onDeleteExam={handleDeleteExam}
-      />
+          currentView={currentView}
+          onSelectView={handleSelectView}
+          subjects={subjects}
+          topics={topics}
+          questions={questions}
+          tasks={tasks}
+          videos={videos}
+          pdfs={pdfs}
+          flashcards={flashcards}
+          activeSubjectId={activeSubjectId}
+          onSelectSubject={handleSelectSubject}
+          onNavigateToTopic={handleNavigateToTopic}
+          onNavigateToSubject={handleNavigateToSubject}
+          onNavigateToSearchResult={handleNavigateToSearchResult}
+          onOpenBackup={() => setIsBackupModalOpen(true)}
+          onOpenSyncDevices={() => setIsSyncModalOpen(true)}
+          onOpenInstallApp={() => setIsInstallModalOpen(true)}
+          syncPeersCount={syncPeersCount}
+          examSessions={examSessions}
+          activeExamId={activeExamId}
+          onSelectExam={handleSelectExam}
+          onAddExam={handleAddExam}
+          onRenameExam={handleRenameExam}
+          onDeleteExam={handleDeleteExam}
+        />
 
       {/* Main Content Area: 100% corner-to-corner full viewport width (16px 28px edge padding) */}
       <main className="w-full px-4 sm:px-7 py-4 pb-28 md:pb-12 box-border">
@@ -690,11 +790,13 @@ function DashboardContent() {
 
       </main>
 
-      {/* Mobile Bottom Navigation (Persistent on mobile screens) */}
+      {/* Mobile Bottom Navigation (Persistent on mobile screens with Liquid Glass Dock) */}
       <MobileBottomNav
         currentView={currentView as ExtendedNavView}
-        onSelectView={(view) => setCurrentView(view as MainNavView)}
+        onSelectView={(view) => handleSelectView(view as MainNavView)}
         onOpenBackup={() => setIsBackupModalOpen(true)}
+        onOpenSyncDevices={() => setIsSyncModalOpen(true)}
+        onOpenInstallApp={() => setIsInstallModalOpen(true)}
         dueFlashcardsCount={dueFlashcardsCount}
       />
 
@@ -719,6 +821,26 @@ function DashboardContent() {
         isOpen={isBackupModalOpen}
         onClose={() => setIsBackupModalOpen(false)}
         onDataReloaded={handleDataReloaded}
+        onShowToast={showToast}
+      />
+
+      {/* Real-Time Multi-Device Connection Hub Modal (WebRTC + QR Code) */}
+      <DeviceSyncModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        onShowToast={showToast}
+        onStateSynced={() => {
+          handleDataReloaded();
+          showToast('Devices synced successfully! ✨', 'success');
+        }}
+      />
+
+      {/* Smart Device-Aware Install App Modal (PWA / iOS Safari / Desktop QR) */}
+      <InstallAppModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+        deferredPrompt={deferredPrompt}
+        onPromptHandled={() => setDeferredPrompt(null)}
         onShowToast={showToast}
       />
 

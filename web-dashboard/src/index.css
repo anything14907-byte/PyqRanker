@@ -3,24 +3,24 @@
 @tailwind utilities;
 
 /* =========================================================================
-   CSS VARIABLES & DESIGN SYSTEM: ORBITAL EXAM MISSION CONTROL (SPACE THEME)
+   APPLE "LIQUID GLASS" & FLUID DYNAMIC DISPLAY SYSTEM (iOS 26 / macOS Tahoe)
    ========================================================================= */
 
-/* DAY THEME: "Solar Orbit Day" (Stratosphere Sunlight & Frosted Ceramic Spacecraft) */
-:root, .light, [data-theme="light"] {
-  --bg-canvas: #F4F8FF;
-  --bg-card: rgba(255, 255, 255, 0.90);
-  --bg-card-elevated: rgba(240, 246, 255, 0.95);
-  --bg-card-hover: #FFFFFF;
-  --bg-well: #EDF3FA;
-  --surface-card: rgba(255, 255, 255, 0.90);
-  --surface-hover: rgba(240, 246, 255, 0.95);
-  --surface-input: #EDF3FA;
+/* 1. LIQUID DAYLIGHT (VisionOS Light) */
+:root, .light, [data-theme="light"], [data-theme="liquid-light"] {
+  --bg-canvas: #F0F4FA;
+  --bg-card: rgba(255, 255, 255, 0.88);
+  --bg-card-elevated: rgba(244, 248, 255, 0.94);
+  --bg-card-hover: rgba(255, 255, 255, 0.98);
+  --bg-well: rgba(235, 242, 250, 0.85);
+  --surface-card: rgba(255, 255, 255, 0.88);
+  --surface-hover: rgba(244, 248, 255, 0.94);
+  --surface-input: rgba(235, 242, 250, 0.85);
 
-  --border-color: #CBD5E1;
-  --border-highlight: #FFFFFF;
-  --border-hover: #94A3B8;
-  --border-well: #CBD5E1;
+  --border-color: rgba(0, 0, 0, 0.12);
+  --border-highlight: rgba(255, 255, 255, 0.95);
+  --border-hover: rgba(0, 0, 0, 0.22);
+  --border-well: rgba(0, 0, 0, 0.08);
 
   /* Typography: Deep Navy Ink (#0F172A) & Slate (#334155) for 100% sharp contrast */
   --text-primary: #0F172A;
@@ -28,79 +28,120 @@
   --text-secondary: #334155;
   --text-muted: #64748B;
 
-  /* Accents & Buttons: Orbital Cyan (#0284C7), Terra Jade (#059669), Solar Gold (#D97706) */
-  --accent-main: #059669;
-  --accent-hover: #047857;
+  /* Accents & Buttons */
+  --accent-main: #0284C7;
+  --accent-hover: #0369A1;
   --accent-champagne: #D97706;
   --accent-jade: #059669;
   --accent-crimson: #DC2626;
 
-  --btn-bg: #059669;
+  --btn-bg: #0284C7;
   --btn-text: #FFFFFF;
-  --btn-hover: #047857;
+  --btn-hover: #0369A1;
 
-  /* Links & Secondary Highlights */
   --accent-link: #0284C7;
   --focus-outline: #0284C7;
 
-  /* Frosted Glass & Orbital Elevation */
-  --shadow-card: inset 0 1px 0 #FFFFFF, 0 10px 26px -6px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
-  --shadow-card-hover: inset 0 1px 0 #FFFFFF, 0 16px 34px -8px rgba(15, 23, 42, 0.14), 0 4px 10px -2px rgba(15, 23, 42, 0.06);
+  /* Apple Liquid Glass Shadows */
+  --shadow-card: inset 0 1px 1px rgba(255, 255, 255, 0.95), 0 12px 32px -6px rgba(15, 23, 42, 0.10), 0 2px 6px -1px rgba(15, 23, 42, 0.05);
+  --shadow-card-hover: inset 0 1px 1px rgba(255, 255, 255, 1), 0 18px 40px -8px rgba(15, 23, 42, 0.16), 0 4px 10px -2px rgba(15, 23, 42, 0.08);
   --shadow-well: inset 0 2px 5px rgba(15, 23, 42, 0.06), 0 1px 0 #FFFFFF;
-  --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(0, 0, 0, 0.20), 0 5px 12px rgba(0, 0, 0, 0.10);
-  --shadow-btn-active: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 1px 0 rgba(0, 0, 0, 0.25);
+  --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 3px 0 rgba(0, 0, 0, 0.16), 0 6px 14px rgba(0, 0, 0, 0.10);
+  --shadow-btn-active: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 0 rgba(0, 0, 0, 0.2);
 
-  /* Status Colors */
   --status-done: #059669;
   --status-okay: #D97706;
   --status-weak: #DC2626;
 }
 
-/* NIGHT THEME: "Deep Cosmos Night" (Nebula Glow & Dark Spacecraft Hull) */
-.dark, [data-theme="dark"] {
-  --bg-canvas: #070B19;
-  --bg-card: rgba(13, 20, 38, 0.82);
-  --bg-card-elevated: rgba(18, 28, 54, 0.88);
-  --bg-card-hover: rgba(22, 34, 66, 0.92);
-  --bg-well: rgba(6, 10, 20, 0.88);
-  --surface-card: rgba(13, 20, 38, 0.82);
-  --surface-hover: rgba(18, 28, 54, 0.88);
-  --surface-input: rgba(6, 10, 20, 0.88);
+/* 2. APPLE LIQUID GLASS (Default Dark) */
+.dark, [data-theme="dark"], [data-theme="liquid-dark"] {
+  --bg-canvas: #090D16;
+  --bg-card: rgba(15, 23, 42, 0.75);
+  --bg-card-elevated: rgba(22, 33, 58, 0.82);
+  --bg-card-hover: rgba(28, 42, 74, 0.88);
+  --bg-well: rgba(10, 16, 30, 0.85);
+  --surface-card: rgba(15, 23, 42, 0.75);
+  --surface-hover: rgba(22, 33, 58, 0.82);
+  --surface-input: rgba(10, 16, 30, 0.85);
 
-  --border-color: rgba(56, 189, 248, 0.22);
-  --border-highlight: rgba(56, 189, 248, 0.45);
-  --border-hover: rgba(56, 189, 248, 0.50);
-  --border-well: rgba(56, 189, 248, 0.15);
+  --border-color: rgba(255, 255, 255, 0.18);
+  --border-highlight: rgba(255, 255, 255, 0.35);
+  --border-hover: rgba(56, 189, 248, 0.45);
+  --border-well: rgba(255, 255, 255, 0.10);
 
-  /* Typography: Star White (#F8FAFC) & Cosmic Silver (#CBD5E1) */
+  /* Typography */
   --text-primary: #F8FAFC;
-  --text-body: #CBD5E1;
+  --text-body: #E2E8F0;
   --text-secondary: #94A3B8;
   --text-muted: #94A3B8;
 
-  /* Accents & Buttons: Nebula Cyan (#38BDF8), Terra Jade (#10B981), Solar Gold (#F59E0B) */
-  --accent-main: #10B981;
-  --accent-hover: #34D399;
+  /* Accents */
+  --accent-main: #06B6D4;
+  --accent-hover: #22D3EE;
   --accent-champagne: #F59E0B;
   --accent-jade: #10B981;
   --accent-crimson: #F87171;
 
-  --btn-bg: #10B981;
-  --btn-text: #070B19;
-  --btn-hover: #34D399;
+  --btn-bg: #06B6D4;
+  --btn-text: #050B14;
+  --btn-hover: #22D3EE;
 
-  /* Links & Secondary Highlights */
   --accent-link: #38BDF8;
   --focus-outline: #38BDF8;
 
-  /* Orbital Glow Shadows */
-  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 14px 34px -8px rgba(0, 0, 0, 0.75), 0 0 16px rgba(56, 189, 248, 0.08);
-  --shadow-card-hover: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 20px 42px -10px rgba(0, 0, 0, 0.85), 0 0 24px rgba(56, 189, 248, 0.16);
-  --shadow-well: inset 0 3px 8px rgba(0, 0, 0, 0.90), 0 1px 0 rgba(56, 189, 248, 0.10);
-  --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 3px 0 rgba(0, 0, 0, 0.45), 0 6px 14px rgba(0, 0, 0, 0.35);
-  --shadow-btn-active: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 1px 0 rgba(0, 0, 0, 0.50);
+  /* Specular Rim Light & Specular Glare */
+  --shadow-card: inset 0 1px 1px rgba(255, 255, 255, 0.45), inset 0 -1px 1px rgba(255, 255, 255, 0.1), 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 18px rgba(6, 182, 212, 0.08);
+  --shadow-card-hover: inset 0 1px 1px rgba(255, 255, 255, 0.65), inset 0 -1px 1px rgba(255, 255, 255, 0.15), 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 28px rgba(6, 182, 212, 0.18);
+  --shadow-well: inset 0 3px 8px rgba(0, 0, 0, 0.85), 0 1px 0 rgba(255, 255, 255, 0.08);
+  --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(0, 0, 0, 0.4), 0 6px 16px rgba(0, 0, 0, 0.3);
+  --shadow-btn-active: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 1px 0 rgba(0, 0, 0, 0.5);
 
-  /* Status Colors */
+  --status-done: #10B981;
+  --status-okay: #F59E0B;
+  --status-weak: #F87171;
+}
+
+/* 3. PRO CYBER STUDIO (High-Contrast Obsidian Glass) */
+[data-theme="pro-cyber"] {
+  --bg-canvas: #030508;
+  --bg-card: rgba(8, 12, 20, 0.88);
+  --bg-card-elevated: rgba(14, 20, 32, 0.92);
+  --bg-card-hover: rgba(20, 28, 44, 0.96);
+  --bg-well: rgba(4, 6, 12, 0.92);
+  --surface-card: rgba(8, 12, 20, 0.88);
+  --surface-hover: rgba(14, 20, 32, 0.92);
+  --surface-input: rgba(4, 6, 12, 0.92);
+
+  --border-color: rgba(6, 182, 212, 0.30);
+  --border-highlight: rgba(6, 182, 212, 0.60);
+  --border-hover: rgba(6, 182, 212, 0.70);
+  --border-well: rgba(6, 182, 212, 0.18);
+
+  --text-primary: #FFFFFF;
+  --text-body: #E2E8F0;
+  --text-secondary: #94A3B8;
+  --text-muted: #94A3B8;
+
+  --accent-main: #06B6D4;
+  --accent-hover: #22D3EE;
+  --accent-champagne: #F59E0B;
+  --accent-jade: #10B981;
+  --accent-crimson: #F87171;
+
+  --btn-bg: #06B6D4;
+  --btn-text: #030508;
+  --btn-hover: #22D3EE;
+
+  --accent-link: #38BDF8;
+  --focus-outline: #06B6D4;
+
+  --shadow-card: inset 0 1px 1px rgba(6, 182, 212, 0.35), 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 22px rgba(6, 182, 212, 0.15);
+  --shadow-card-hover: inset 0 1px 1px rgba(6, 182, 212, 0.6), 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 32px rgba(6, 182, 212, 0.25);
+  --shadow-well: inset 0 3px 8px rgba(0, 0, 0, 0.95), 0 1px 0 rgba(6, 182, 212, 0.15);
+  --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(0, 0, 0, 0.5), 0 6px 16px rgba(0, 0, 0, 0.4);
+  --shadow-btn-active: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 1px 0 rgba(0, 0, 0, 0.6);
+
   --status-done: #10B981;
   --status-okay: #F59E0B;
   --status-weak: #F87171;
@@ -111,25 +152,31 @@
     box-sizing: border-box;
   }
 
-  html, body, #root {
+  html, body {
+    width: 100%;
+    max-width: 100vw;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden;
+    min-height: 100vh;
+    min-height: 100dvh;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, Roboto, sans-serif;
+    color: var(--text-body);
+    background-color: var(--bg-canvas);
+    transition: background-color 0.4s cubic-bezier(0.22, 1, 0.36, 1), color 0.4s ease;
+  }
+
+  #root, #app {
     width: 100%;
     min-height: 100vh;
+    min-height: 100dvh;
     max-width: 100vw !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow-x: hidden;
   }
-  
-  body {
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    margin: 0 !important;
-    padding: 0 !important;
-    min-height: 100vh;
-    color: var(--text-body);
-    transition: background-color 0.4s ease, color 0.4s ease;
-  }
 
-  /* Form Input & Textarea Theming: Recessed Spacecraft Bay */
+  /* Universal Liquid Input Styling */
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
   select,
   textarea {
@@ -137,6 +184,9 @@
     border-color: var(--border-well) !important;
     box-shadow: var(--shadow-well) !important;
     color: var(--text-body) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   input::placeholder,
@@ -157,7 +207,7 @@
     outline-offset: 1px;
   }
 
-  /* Custom Clean Scrollbar */
+  /* Sleek Apple Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -175,58 +225,86 @@
 }
 
 /* =========================================================================
-   SPACE, PLANETS & ROCKETS UTILITIES
+   APPLE LIQUID GLASS MATERIAL UTILITIES (PHYSICS & OPTICS)
    ========================================================================= */
 
-/* Translucent Frosted Spacecraft Glass Cards */
+/* Liquid Glass Cards */
 .hardware-card,
+.liquid-glass-card,
 .bg-paper-card {
   background: var(--bg-card);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(28px) saturate(210%) brightness(1.08);
+  -webkit-backdrop-filter: blur(28px) saturate(210%) brightness(1.08);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-card);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s ease;
+  position: relative;
 }
-.hardware-card:hover {
+
+/* Fluid Glare Reflection Overlay across cards tracking pointer */
+.hardware-card::before,
+.liquid-glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(550px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.08), transparent 45%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.hardware-card:hover::before,
+.liquid-glass-card:hover::before {
+  opacity: 1;
+}
+
+.hardware-card:hover,
+.liquid-glass-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-card-hover) !important;
 }
 
 .dark .dark\:bg-night-card,
-[data-theme="dark"] .dark\:bg-night-card {
+[data-theme="dark"] .dark\:bg-night-card,
+[data-theme="liquid-dark"] .dark\:bg-night-card,
+[data-theme="pro-cyber"] .dark\:bg-night-card {
   background: var(--bg-card);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(28px) saturate(210%) brightness(1.08);
+  -webkit-backdrop-filter: blur(28px) saturate(210%) brightness(1.08);
 }
 
-/* Sunken Instrument Wells for Controls, Gauges, Counters */
+/* Sunken Recessed Control Wells */
 .instrument-well {
   background-color: var(--bg-well) !important;
   border: 1px solid var(--border-well) !important;
   box-shadow: var(--shadow-well) !important;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
-/* Tactile Physical Push Buttons with Thruster Lift */
-.btn-hardware {
+/* Fluid Push Buttons with Spring Kinetics */
+.btn-hardware,
+.btn-tactile {
   box-shadow: var(--shadow-btn);
-  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease, filter 0.12s ease;
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.16s ease, filter 0.16s ease, background-color 0.16s ease;
   user-select: none;
+  min-height: 44px; /* Apple minimum touch target guideline */
 }
-.btn-hardware:hover {
+.btn-hardware:hover,
+.btn-tactile:hover {
   transform: translateY(-2px);
   filter: brightness(1.06);
 }
-.btn-hardware:active {
-  transform: translateY(2px) !important;
+.btn-hardware:active,
+.btn-tactile:active {
+  transform: scale(0.97) !important;
   box-shadow: var(--shadow-btn-active) !important;
 }
 
-/* Precision Chronometer Displays */
+/* Precision Chronometer Monospace Display */
 .chronometer-display,
 .countdown-digit {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: 'SF Mono', 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
 }
@@ -237,7 +315,6 @@ button.btn-primary-action {
   background-color: var(--btn-bg) !important;
   color: var(--btn-text) !important;
 }
-
 .btn-primary:hover,
 button.btn-primary-action:hover {
   background-color: var(--btn-hover) !important;
@@ -248,23 +325,11 @@ button.btn-primary-action:hover {
   background-color: var(--accent-main) !important;
 }
 
-/* Tactile Micro-Animations */
-.btn-tactile {
-  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
-  user-select: none;
-}
-.btn-tactile:hover {
-  transform: translateY(-1px);
-}
-.btn-tactile:active {
-  transform: scale(0.97);
-}
-
 /* Smooth Tab / Card Fade Slide-Up */
 @keyframes fadeSlideUp {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -272,16 +337,16 @@ button.btn-primary-action:hover {
   }
 }
 .animate-fade-slide-up {
-  animation: fadeSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeSlideUp 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* Urgent Exam Countdown Pulse (< 5 Days) */
+/* Urgent Exam Countdown Pulse */
 @keyframes urgentExamPulse {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.45);
   }
   50% {
-    box-shadow: 0 0 0 7px rgba(248, 113, 113, 0);
+    box-shadow: 0 0 0 8px rgba(248, 113, 113, 0);
   }
 }
 .pulse-urgent-exam {
@@ -289,110 +354,61 @@ button.btn-primary-action:hover {
 }
 
 /* =========================================================================
-   SPACE SCENE KEYFRAMES (TWINKLE, ORBITS, ROCKET THRUSTER, SHOOTING STARS)
+   FLUID AURORA BLOB KEYFRAME SHIFTS
    ========================================================================= */
 
-@keyframes twinkle {
+@keyframes auroraBlob1 {
   0%, 100% {
-    opacity: 0.3;
-    transform: scale(0.9);
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(60px, 40px) scale(1.12) rotate(15deg);
+  }
+  66% {
+    transform: translate(-40px, 70px) scale(0.92) rotate(-10deg);
+  }
+}
+.animate-aurora-blob-1 {
+  animation: auroraBlob1 22s ease-in-out infinite;
+}
+
+@keyframes auroraBlob2 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(-70px, -50px) scale(1.15) rotate(-20deg);
+  }
+  66% {
+    transform: translate(50px, -30px) scale(0.95) rotate(15deg);
+  }
+}
+.animate-aurora-blob-2 {
+  animation: auroraBlob2 26s ease-in-out infinite;
+}
+
+@keyframes auroraBlob3 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
   }
   50% {
-    opacity: 1;
-    transform: scale(1.18);
+    transform: translate(50px, -60px) scale(1.18) rotate(25deg);
   }
 }
-.animate-twinkle {
-  animation: twinkle infinite ease-in-out;
+.animate-aurora-blob-3 {
+  animation: auroraBlob3 20s ease-in-out infinite;
 }
 
-@keyframes floatOrbit {
+@keyframes auroraBlob4 {
   0%, 100% {
-    transform: translateY(0px) rotate(-1deg);
+    transform: translate(0px, 0px) scale(1);
   }
   50% {
-    transform: translateY(-16px) rotate(2deg);
+    transform: translate(-40px, 30px) scale(1.08);
   }
 }
-.animate-float-orbit {
-  animation: floatOrbit 18s ease-in-out infinite;
-}
-
-@keyframes floatSlow {
-  0%, 100% {
-    transform: translateY(0px) rotate(1deg);
-  }
-  50% {
-    transform: translateY(-14px) rotate(-2deg);
-  }
-}
-.animate-float-slow {
-  animation: floatSlow 15s ease-in-out infinite;
-}
-
-@keyframes floatReverse {
-  0%, 100% {
-    transform: translateY(-50%) translateY(0px) scale(1);
-  }
-  50% {
-    transform: translateY(-50%) translateY(14px) scale(1.02);
-  }
-}
-.animate-float-reverse {
-  animation: floatReverse 16s ease-in-out infinite;
-}
-
-@keyframes moonOrbit {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-.animate-moon-orbit {
-  animation: moonOrbit 12s linear infinite;
-}
-
-/* Shooting Stars */
-.shooting-star {
-  position: absolute;
-  top: 15%;
-  right: 15%;
-  width: 140px;
-  height: 2px;
-  background: linear-gradient(90deg, #FFFFFF, rgba(56, 189, 248, 0.8), transparent);
-  transform: rotate(-35deg);
-  opacity: 0;
-  pointer-events: none;
-}
-.shooting-star-1 {
-  animation: shootingStar 9s ease-in-out 2s infinite;
-}
-.shooting-star-2 {
-  top: 35%;
-  right: 40%;
-  width: 100px;
-  animation: shootingStar 13s ease-in-out 7s infinite;
-}
-
-@keyframes shootingStar {
-  0% {
-    transform: translateX(0) translateY(0) rotate(-35deg) scaleX(0);
-    opacity: 0;
-  }
-  10% {
-    transform: translateX(-40px) translateY(40px) rotate(-35deg) scaleX(1);
-    opacity: 1;
-  }
-  30% {
-    transform: translateX(-200px) translateY(200px) rotate(-35deg) scaleX(1.4);
-    opacity: 0.8;
-  }
-  60%, 100% {
-    transform: translateX(-320px) translateY(320px) rotate(-35deg) scaleX(0);
-    opacity: 0;
-  }
+.animate-aurora-blob-4 {
+  animation: auroraBlob4 18s ease-in-out infinite;
 }
 
 /* Rocket Thruster Flame Flicker */
@@ -438,30 +454,46 @@ button.btn-primary-action:hover {
   animation: rocketBoost 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Print Optimization */
-@media print {
-  body {
-    background: #FFFFFF !important;
-    color: #000000 !important;
-  }
-  header, nav, .print\:hidden {
-    display: none !important;
-  }
-  .print\:p-0 {
-    padding: 0 !important;
-  }
-  .break-inside-avoid {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-}
+/* =========================================================================
+   STRICT MOBILE CENTERING & ZERO-OVERFLOW RULES (< 768px)
+   ========================================================================= */
 
-/* Safeguard: Prevent any external injected floating round buttons on the right edge */
-body > [style*="position: fixed"][style*="right: 0"],
-body > [style*="position: fixed"][style*="right:0"],
-body > div[class*="floating-button"],
-body > div[class*="feedback-btn"] {
-  display: none !important;
+@media (max-width: 767px) {
+  /* Enforce strict centering and zero horizontal overflow on mobile phones */
+  main,
+  .main-content,
+  .dashboard,
+  .page-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .hardware-card,
+  .liquid-glass-card {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  header, nav, .navbar {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Ensure touch targets comply with 44px minimum */
+  button, a {
+    min-height: 40px;
+  }
+
+  /* Safe Area Bottom Padding for iPhones / Modern Android gestures */
+  .safe-area-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom, 16px), 16px) !important;
+  }
 }
 
 /* =========================================================================
@@ -478,7 +510,7 @@ html, body, #root, #app, main, .app, .app-container, .dashboard, .main-content, 
 header, nav, .navbar, .header-container, .topbar {
   width: 100% !important;
   max-width: 100vw !important;
-  padding-left: 20px !important;
-  padding-right: 20px !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
   box-sizing: border-box !important;
 }

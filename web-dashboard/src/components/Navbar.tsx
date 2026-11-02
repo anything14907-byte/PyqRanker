@@ -10,7 +10,7 @@ import {
   Flashcard, 
   SubjectFile 
 } from '../types';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme, VisualMode } from '../contexts/ThemeContext';
 import { 
   Sparkles, 
   Sun, 
@@ -31,7 +31,11 @@ import {
   Check, 
   X,
   Search,
-  ExternalLink
+  ExternalLink,
+  Radio,
+  Download,
+  Droplets,
+  Zap
 } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
 import { formatUnitDisplayName } from '../utils/storageService';
@@ -72,6 +76,9 @@ interface NavbarProps {
   onNavigateToTopic?: (subjectId: string, unitId: string, topicId: string) => void;
   onNavigateToSubject?: (subjectId: string) => void;
   onNavigateToSearchResult?: (item: SearchIndexItem) => void;
+  onOpenSyncDevices?: () => void;
+  onOpenInstallApp?: () => void;
+  syncPeersCount?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -96,9 +103,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   files = [],
   onNavigateToTopic,
   onNavigateToSubject,
-  onNavigateToSearchResult
+  onNavigateToSearchResult,
+  onOpenSyncDevices,
+  onOpenInstallApp,
+  syncPeersCount = 1
 }) => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, themeMode, setThemeMode, toggleTheme } = useTheme();
   const [isExamDropdownOpen, setIsExamDropdownOpen] = useState(false);
   const [isCreatingExam, setIsCreatingExam] = useState(false);
   const [newExamName, setNewExamName] = useState('');
@@ -377,35 +387,75 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </nav>
 
-          {/* ZONE 3: RIGHT (flex-shrink: 0, gap: 10px) - Backup & Prominent Theme Toggle Pill Button */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {/* ZONE 3: RIGHT (flex-shrink: 0, gap: 8px) - Multi-Device Sync, Install App, Backup & 3-Mode Visual Switcher */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             
+            {/* Real-Time Multi-Device Sync Button */}
+            {onOpenSyncDevices && (
+              <button
+                type="button"
+                onClick={onOpenSyncDevices}
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 dark:text-cyan-400 font-bold transition-all btn-tactile flex items-center gap-1.5 shadow-sm active:scale-95 text-xs"
+                title="P2P WebRTC Multi-Device Sync (iPhone, Android, PC)"
+              >
+                <Radio className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400 animate-pulse" />
+                <span className="hidden sm:inline whitespace-nowrap">Sync</span>
+                {syncPeersCount > 1 && (
+                  <span className="w-4 h-4 rounded-full bg-cyan-500 text-black text-[10px] font-black flex items-center justify-center">
+                    {syncPeersCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Smart Device-Aware Install App Button */}
+            {onOpenInstallApp && (
+              <button
+                type="button"
+                onClick={onOpenInstallApp}
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 font-bold transition-all btn-tactile flex items-center gap-1.5 shadow-sm active:scale-95 text-xs"
+                title="Download / Install Native App"
+              >
+                <Download className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                <span className="hidden lg:inline whitespace-nowrap">Install</span>
+              </button>
+            )}
+
             {/* Backup Button */}
             <button
               onClick={onOpenBackup}
-              className="px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold transition-all btn-tactile flex items-center gap-1.5 shadow-sm active:scale-95"
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold transition-all btn-tactile flex items-center gap-1.5 shadow-sm active:scale-95"
               title="1-Click Data Backup & Restore (JSON)"
             >
-              <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-xs font-bold hidden sm:inline whitespace-nowrap">💾 Backup</span>
+              <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-xs font-bold hidden xl:inline whitespace-nowrap">Backup</span>
             </button>
 
-            {/* Prominent Theme Toggle Pill Button: "🚀 Cosmos Dark" / "☀️ Solar Day" */}
+            {/* 3-Mode Liquid Glass Switcher: "💧 Liquid Glass" / "☀️ Daylight" / "⚡ Cyber" */}
             <button
               type="button"
-              onClick={toggleTheme}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all btn-hardware flex items-center gap-1.5 active:scale-95 whitespace-nowrap bg-paper-cardElevated/90 dark:bg-night-cardElevated/90 border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:border-cyan-500/50 shadow-sm"
-              title={`Switch to ${theme === 'dark' ? 'Solar Orbit Day Theme' : 'Deep Cosmos Night Theme'}`}
+              onClick={() => {
+                if (themeMode === 'liquid-dark') setThemeMode('liquid-light');
+                else if (themeMode === 'liquid-light') setThemeMode('pro-cyber');
+                else setThemeMode('liquid-dark');
+              }}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border transition-all btn-hardware flex items-center gap-1.5 active:scale-95 whitespace-nowrap bg-paper-cardElevated/90 dark:bg-night-cardElevated/90 border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:border-cyan-500/50 shadow-sm"
+              title={`Active Mode: ${themeMode}. Click to switch modes.`}
             >
-              {theme === 'dark' ? (
+              {themeMode === 'liquid-light' ? (
                 <>
-                  <Sun className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="tracking-wide">☀️ Solar Day</span>
+                  <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span className="tracking-wide hidden xs:inline">☀️ Daylight</span>
+                </>
+              ) : themeMode === 'pro-cyber' ? (
+                <>
+                  <Zap className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span className="tracking-wide hidden xs:inline">⚡ Cyber</span>
                 </>
               ) : (
                 <>
-                  <Rocket className="w-4 h-4 text-cyan-600 shrink-0" />
-                  <span className="tracking-wide">🚀 Cosmos Dark</span>
+                  <Droplets className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span className="tracking-wide hidden xs:inline">💧 Liquid Glass</span>
                 </>
               )}
             </button>

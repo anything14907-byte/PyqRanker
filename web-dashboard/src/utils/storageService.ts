@@ -1813,8 +1813,8 @@ export const storageService = {
   // ==========================================
   // DATA SAVING: EXPORT & IMPORT BACKUP (JSON)
   // ==========================================
-  exportBackup(): void {
-    const backup: FullBackupData = {
+  getBackupObject(): FullBackupData {
+    return {
       version: '3.1.0',
       exportedAt: new Date().toISOString(),
       subjects: this.getSubjects(),
@@ -1828,6 +1828,10 @@ export const storageService = {
       videoPositions: this.getVideoPlaybackPositions(),
       vaultActiveVideoId: this.getVaultActiveVideoId()
     };
+  },
+
+  exportBackup(): void {
+    const backup: FullBackupData = this.getBackupObject();
 
     const json = JSON.stringify(backup, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -1841,9 +1845,13 @@ export const storageService = {
     URL.revokeObjectURL(url);
   },
 
-  importBackup(jsonString: string): { success: boolean; message: string } {
+  restoreBackup(backupData: FullBackupData | string): { success: boolean; message: string } {
+    return this.importBackup(backupData);
+  },
+
+  importBackup(backupInput: string | FullBackupData): { success: boolean; message: string } {
     try {
-      const data = JSON.parse(jsonString);
+      const data = typeof backupInput === 'string' ? JSON.parse(backupInput) : backupInput;
       if (!data || typeof data !== 'object') {
         return { success: false, message: 'Invalid backup JSON file structure.' };
       }
