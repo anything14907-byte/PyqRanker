@@ -97,9 +97,9 @@ export const CommandSubHeader: React.FC<CommandSubHeaderProps> = ({
     <div className="w-full px-4 sm:px-7 py-2.5 border-b border-paper-border/60 dark:border-white/10 bg-paper-card/60 dark:bg-black/25 backdrop-blur-xl transition-colors">
       <div className="w-full flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         
-        {/* LEFT: Exam Type Segmented Glass Selector */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 shrink-0">
-          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-paper-well/60 dark:bg-white/5 border border-paper-borderWell dark:border-white/10 shadow-xs">
+        {/* LEFT: Exam Type Segmented Glass Selector (Responsive wrap on mobile so NO pill is cut off) */}
+        <div className="w-full lg:w-auto">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 p-1 rounded-2xl bg-paper-well/60 dark:bg-white/5 border border-paper-borderWell dark:border-white/10 shadow-xs w-full sm:w-auto">
             {examSessions.map(session => {
               const isActive = session.id === activeExamId;
               const isEditing = editingExamId === session.id;
@@ -244,3 +244,4 @@ export const CommandSubHeader: React.FC<CommandSubHeaderProps> = ({
     </div>
   );
 };
+

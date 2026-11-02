@@ -70,6 +70,15 @@ export const GlobalSearchBar: React.FC<GlobalSearchBarProps> = ({
   const [searchAllExams, setSearchAllExams] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+  const [isScreenMobile, setIsScreenMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+  useEffect(() => {
+    const checkMobile = () => setIsScreenMobile(window.innerWidth < 768);
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const isMobileEffective = isMobile || isScreenMobile;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -229,7 +238,7 @@ export const GlobalSearchBar: React.FC<GlobalSearchBarProps> = ({
           }}
           onFocus={() => setIsSearchOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder={isMobile ? `Search ${searchAllExams ? 'all exams' : activeExam.name}...` : `Search ${searchAllExams ? 'all exams' : activeExam.name}... (Press /)`}
+          placeholder={isMobileEffective ? "🔍 Search topics, PYQs, or notes..." : "🔍 Search topics, PYQs, or notes... (Press /)"}
           className="w-full pl-8 pr-14 py-1.5 text-xs rounded-xl instrument-well text-paper-ink dark:text-night-text placeholder-paper-muted dark:placeholder-night-muted focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
         />
 

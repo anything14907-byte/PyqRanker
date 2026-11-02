@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Sparkles, 
   Sun, 
@@ -45,6 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   syncPeersCount = 1
 }) => {
   const { themeMode, setThemeMode } = useTheme();
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
 
   // Navigation tabs
   const navItems: { id: MainNavView; label: string; icon: React.ReactNode }[] = [
@@ -82,8 +83,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* CENTER: Segmented Liquid Glass Navigation Track (horizontal scroll on mobile) */}
-        <nav className="flex-1 flex justify-center items-center min-w-0 overflow-x-auto no-scrollbar py-0.5 px-1">
+        {/* CENTER: Desktop Segmented Liquid Glass Navigation Track (HIDDEN ON MOBILE < 768px TO PREVENT OVERFLOW/CUT-OFF) */}
+        <nav className="hidden md:flex flex-1 justify-center items-center min-w-0 overflow-x-auto no-scrollbar py-0.5 px-1">
           <div className="flex items-center gap-1 p-1 rounded-2xl bg-paper-well/70 dark:bg-black/35 border border-paper-borderWell dark:border-white/10 shadow-inner flex-nowrap shrink-0">
             {navItems.map(item => {
               const isActive = currentView === item.id || (item.id === 'pyqs' && currentView === 'syllabus');
@@ -105,10 +106,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </nav>
 
-        {/* RIGHT: Compact Non-Overlapping Utility Action Buttons */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        {/* RIGHT: Compact Non-Overlapping Utility Action Buttons (Max 3 on Mobile) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           
-          {/* 🔗 QR Sync */}
+          {/* Button 1: 🔗 QR Sync */}
           {onOpenSyncDevices && (
             <button
               type="button"
@@ -126,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* 💧 Glass Mode Switcher */}
+          {/* Button 2: 💧 Glass Mode Switcher */}
           <button
             type="button"
             onClick={() => {
@@ -155,12 +156,48 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* 📲 App Install */}
+          {/* Button 3 (Mobile < md): Combined Install & Backup Popover (Limits to at most 3 buttons) */}
+          <div className="relative md:hidden">
+            <button
+              type="button"
+              onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
+              className="px-2.5 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95 text-xs"
+              title="Backup & Install Options"
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-400" />
+              <Download className="w-3 h-3 text-indigo-400 -ml-0.5" />
+            </button>
+            {isToolsMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsToolsMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-paper-cardElevated dark:bg-[#0c1324] border border-paper-border dark:border-white/15 shadow-2xl p-2 z-50 animate-scale-up space-y-1">
+                  <button
+                    onClick={() => { setIsToolsMenuOpen(false); onOpenBackup(); }}
+                    className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15 flex items-center gap-2 transition-colors"
+                  >
+                    <Database className="w-4 h-4 shrink-0" />
+                    <span>💾 Backup & Restore</span>
+                  </button>
+                  {onOpenInstallApp && (
+                    <button
+                      onClick={() => { setIsToolsMenuOpen(false); onOpenInstallApp(); }}
+                      className="w-full px-3 py-2 rounded-xl text-left text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/15 flex items-center gap-2 transition-colors"
+                    >
+                      <Download className="w-4 h-4 shrink-0" />
+                      <span>📲 Install App (PWA)</span>
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Desktop Only Buttons: Separate App Install + Backup Buttons */}
           {onOpenInstallApp && (
             <button
               type="button"
               onClick={onOpenInstallApp}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 text-xs"
+              className="hidden md:flex px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold transition-all items-center gap-1.5 shadow-sm active:scale-95 text-xs"
               title="Install / Download Native App"
             >
               <Download className="w-3.5 h-3.5 text-indigo-400" />
@@ -168,16 +205,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* 💾 Backup */}
           <button
             type="button"
             onClick={onOpenBackup}
-            className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 text-xs"
+            className="hidden md:flex px-2.5 sm:px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold transition-all items-center gap-1.5 shadow-sm active:scale-95 text-xs"
             title="1-Click JSON Backup & Restore"
           >
             <Database className="w-3.5 h-3.5 text-emerald-400" />
             <span className="hidden xl:inline whitespace-nowrap">Backup</span>
           </button>
+
         </div>
 
       </div>

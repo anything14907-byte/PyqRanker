@@ -253,45 +253,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   const overallPercent = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
   return (
-    <div className="w-full space-y-8 animate-fade-slide-up pb-16">
-
-      {/* 0. BACKUP REMINDER BANNER (Requirement 13: 7 days without export) */}
-      {showBackupReminder && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-paper-ink dark:text-night-text flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-slide-up">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                Backup Reminder {lastBackupTs > 0 ? `(Last exported ${Math.floor(daysSinceBackup)} days ago)` : '(No backup exported yet)'}
-              </div>
-              <div className="text-[11px] text-paper-muted dark:text-night-muted">
-                Keep your study notes, syllabus units, and revision files safe with a local single-file backup.
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-            {onOpenBackup && (
-              <button
-                onClick={onOpenBackup}
-                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold btn-tactile shadow-sm flex items-center gap-1.5"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export Backup</span>
-              </button>
-            )}
-            <button
-              onClick={() => setDismissedBackupReminder(true)}
-              className="p-1.5 rounded-xl text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text"
-              title="Dismiss reminder"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
+    <div className="w-full space-y-6 sm:space-y-8 animate-fade-slide-up pb-16">
       
       {/* 1. EXAM READINESS & MOMENTUM COMMAND CENTER (100% Widescreen Liquid Glass Card) */}
       {nextSubject && nextUrgency && nextUrgency.hasDate && masteryMetrics && (
@@ -617,22 +579,28 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         </div>
       )}
 
-      {/* 2. QUICK STATS BAR */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Stat 1: Overall Syllabus Progress */}
+      {/* 2. SLEEK COMPACT 3-COLUMN STATS STRIP (~64px-70px height) */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full">
+        {/* Stat 1: Syllabus Progress */}
         <div 
           onClick={() => onNavigateView('syllabus')}
-          className="p-4 rounded-2xl hardware-card hover:border-emerald-500 cursor-pointer transition-all flex items-center gap-4 group btn-tactile"
+          className="p-2.5 sm:p-3.5 rounded-2xl hardware-card hover:border-cyan-500/60 cursor-pointer transition-all flex items-center gap-2 sm:gap-3 group active:scale-[0.98] select-none"
+          title="Open Syllabus to track unit & topic progress"
         >
-          <div className="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <BookOpen className="w-6 h-6" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <div className="text-2xl font-black text-paper-ink dark:text-night-text">
-              {overallPercent}% Syllabus
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-1 sm:gap-1.5">
+              <span className="text-base sm:text-xl font-black text-paper-ink dark:text-white leading-tight font-mono">
+                {overallPercent}%
+              </span>
+              <span className="text-[10px] sm:text-xs font-bold text-cyan-500 dark:text-cyan-400 hidden xs:inline">
+                Syllabus
+              </span>
             </div>
-            <div className="text-xs text-paper-muted dark:text-night-muted">
-              {completedTopics} of {totalTopics} topics completed →
+            <div className="text-[10px] sm:text-[11px] text-paper-muted dark:text-slate-400 truncate">
+              <span className="xs:hidden">Syllabus • </span>{completedTopics}/{totalTopics} <span className="hidden sm:inline">done</span>
             </div>
           </div>
         </div>
@@ -640,17 +608,23 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         {/* Stat 2: Focus Time Today */}
         <div 
           onClick={() => onNavigateView('timer')}
-          className="p-4 rounded-2xl hardware-card hover:border-emerald-500 cursor-pointer transition-all flex items-center gap-4 group btn-tactile"
+          className="p-2.5 sm:p-3.5 rounded-2xl hardware-card hover:border-emerald-500/60 cursor-pointer transition-all flex items-center gap-2 sm:gap-3 group active:scale-[0.98] select-none"
+          title="Open Pomodoro Focus Timer"
         >
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <Timer className="w-6 h-6" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Timer className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <div className="text-2xl font-black text-paper-ink dark:text-night-text">
-              {todayMinutes} mins
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-1 sm:gap-1.5">
+              <span className="text-base sm:text-xl font-black text-paper-ink dark:text-white leading-tight font-mono">
+                {todayMinutes}m
+              </span>
+              <span className="text-[10px] sm:text-xs font-bold text-emerald-500 dark:text-emerald-400 hidden xs:inline">
+                Focus
+              </span>
             </div>
-            <div className="text-xs text-paper-muted dark:text-night-muted">
-              Pomodoro Studied Today →
+            <div className="text-[10px] sm:text-[11px] text-paper-muted dark:text-slate-400 truncate">
+              <span className="xs:hidden">Focus • </span>Today
             </div>
           </div>
         </div>
@@ -658,17 +632,23 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         {/* Stat 3: Spaced Repetition Due Today */}
         <div 
           onClick={() => onNavigateView('flashcards')}
-          className="p-4 rounded-2xl hardware-card hover:border-emerald-500 cursor-pointer transition-all flex items-center gap-4 group btn-tactile"
+          className="p-2.5 sm:p-3.5 rounded-2xl hardware-card hover:border-amber-500/60 cursor-pointer transition-all flex items-center gap-2 sm:gap-3 group active:scale-[0.98] select-none"
+          title="Open Spaced Repetition Flashcards"
         >
-          <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <Brain className="w-6 h-6" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <div className="text-2xl font-black text-paper-ink dark:text-night-text">
-              {dueFlashcards.length} Cards
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-1 sm:gap-1.5">
+              <span className="text-base sm:text-xl font-black text-paper-ink dark:text-white leading-tight font-mono">
+                {dueFlashcards.length}
+              </span>
+              <span className="text-[10px] sm:text-xs font-bold text-amber-500 dark:text-amber-400 hidden xs:inline">
+                Cards
+              </span>
             </div>
-            <div className="text-xs text-paper-muted dark:text-night-muted">
-              {dueFlashcards.length > 0 ? 'Due For Review Today →' : 'All Cards Reviewed! 🎉'}
+            <div className="text-[10px] sm:text-[11px] text-paper-muted dark:text-slate-400 truncate">
+              <span className="xs:hidden">Cards • </span>{dueFlashcards.length > 0 ? 'Due Today' : 'All done 🎉'}
             </div>
           </div>
         </div>
@@ -942,18 +922,40 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
 
                 </div>
 
-                {/* Bottom Action Button (3D Hardware Keycap in Accent Color) */}
-                <button
-                  onClick={() => onSelectSubject(sub.id)}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 btn-hardware"
-                  style={{ 
-                    backgroundColor: sub.accentColor,
-                    boxShadow: 'var(--shadow-btn)'
-                  }}
-                >
-                  <span>Open Subject</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                {/* Bottom Action Buttons: Direct 1-Tap Open Syllabus & Practice PYQs */}
+                <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-paper-border/60 dark:border-white/10">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectSubject(sub.id);
+                      onNavigateView('syllabus');
+                    }}
+                    className="w-full py-2 px-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 btn-hardware transition-all active:scale-95 shadow-sm"
+                    style={{ 
+                      backgroundColor: sub.accentColor,
+                      boxShadow: 'var(--shadow-btn)'
+                    }}
+                    title={`Open Syllabus for ${sub.name}`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Open Syllabus →</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectSubject(sub.id);
+                      onNavigateView('syllabus');
+                    }}
+                    className="w-full py-2 px-2 rounded-xl text-xs font-bold border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 dark:text-amber-400 flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                    title={`Practice ${subPyqs.length} PYQs for ${sub.name}`}
+                  >
+                    <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                    <span className="truncate">Practice PYQs →</span>
+                  </button>
+                </div>
               </div>
             );
           })}
