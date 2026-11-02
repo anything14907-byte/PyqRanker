@@ -30,7 +30,7 @@ import { Toast, ToastMessage } from './components/Toast';
 import { SearchIndexItem } from './utils/searchService';
 import { SpaceScene } from './components/SpaceScene';
 import { LiquidAuroraScene } from './components/LiquidAuroraScene';
-import { DynamicIsland } from './components/DynamicIsland';
+import { CommandSubHeader } from './components/CommandSubHeader';
 import { DeviceSyncModal } from './components/DeviceSyncModal';
 import { InstallAppModal } from './components/InstallAppModal';
 import { deviceSyncService, SyncPayload } from './services/deviceSyncService';
@@ -111,6 +111,41 @@ function DashboardContent() {
     return () => {
       window.removeEventListener('mousemove', updatePointer);
       window.removeEventListener('touchmove', updatePointer);
+    };
+  }, []);
+
+  // Interactive Optical Glass Specular Glare: updates --x and --y on hovered cards
+  useEffect(() => {
+    const handleCardGlare = (e: MouseEvent | TouchEvent) => {
+      let clientX = 0;
+      let clientY = 0;
+      if ('touches' in e && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else if ('clientX' in e) {
+        clientX = (e as MouseEvent).clientX;
+        clientY = (e as MouseEvent).clientY;
+      }
+      const cards = document.querySelectorAll('.hardware-card, .liquid-glass-card');
+      cards.forEach(card => {
+        const rect = card.getBoundingClientRect();
+        if (
+          clientX >= rect.left - 20 &&
+          clientX <= rect.right + 20 &&
+          clientY >= rect.top - 20 &&
+          clientY <= rect.bottom + 20
+        ) {
+          (card as HTMLElement).style.setProperty('--x', `${clientX - rect.left}px`);
+          (card as HTMLElement).style.setProperty('--y', `${clientY - rect.top}px`);
+        }
+      });
+    };
+
+    window.addEventListener('mousemove', handleCardGlare, { passive: true });
+    window.addEventListener('touchmove', handleCardGlare, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', handleCardGlare);
+      window.removeEventListener('touchmove', handleCardGlare);
     };
   }, []);
 
@@ -593,19 +628,26 @@ function DashboardContent() {
     <div className="relative min-h-screen w-full bg-paper-bg dark:bg-[#070b14] text-paper-ink dark:text-night-text transition-colors duration-200">
       {/* Living Fluid Aurora & Micro Caustic Wave Mesh Backdrop */}
       <LiquidAuroraScene />
-
-      {/* Apple Dynamic Island Control Bar (Sync Status, Display Modes, Quick Actions) */}
-      <DynamicIsland
-        onOpenSyncModal={() => setIsSyncModalOpen(true)}
-        onOpenInstallModal={() => setIsInstallModalOpen(true)}
-        activeNotification={toasts[toasts.length - 1]?.text}
-      />
       
       <div className="relative z-10 w-full min-h-screen">
-        {/* Top Header Bar with MULTIPLE EXAMS SWITCHER & GLOBAL SEARCH */}
+        {/* ROW 1: Ultra-Clean Main Liquid Glass Header Bar */}
         <Navbar
           currentView={currentView}
           onSelectView={handleSelectView}
+          onOpenBackup={() => setIsBackupModalOpen(true)}
+          onOpenSyncDevices={() => setIsSyncModalOpen(true)}
+          onOpenInstallApp={() => setIsInstallModalOpen(true)}
+          syncPeersCount={syncPeersCount}
+        />
+
+        {/* ROW 2: Dedicated Hero Command & Filter Bar (Exam Type Pills + Global Spotlight Search) */}
+        <CommandSubHeader
+          examSessions={examSessions}
+          activeExamId={activeExamId}
+          onSelectExam={handleSelectExam}
+          onAddExam={handleAddExam}
+          onRenameExam={handleRenameExam}
+          onDeleteExam={handleDeleteExam}
           subjects={subjects}
           topics={topics}
           questions={questions}
@@ -613,21 +655,7 @@ function DashboardContent() {
           videos={videos}
           pdfs={pdfs}
           flashcards={flashcards}
-          activeSubjectId={activeSubjectId}
-          onSelectSubject={handleSelectSubject}
-          onNavigateToTopic={handleNavigateToTopic}
-          onNavigateToSubject={handleNavigateToSubject}
           onNavigateToSearchResult={handleNavigateToSearchResult}
-          onOpenBackup={() => setIsBackupModalOpen(true)}
-          onOpenSyncDevices={() => setIsSyncModalOpen(true)}
-          onOpenInstallApp={() => setIsInstallModalOpen(true)}
-          syncPeersCount={syncPeersCount}
-          examSessions={examSessions}
-          activeExamId={activeExamId}
-          onSelectExam={handleSelectExam}
-          onAddExam={handleAddExam}
-          onRenameExam={handleRenameExam}
-          onDeleteExam={handleDeleteExam}
         />
 
       {/* Main Content Area: 100% corner-to-corner full viewport width (16px 28px edge padding) */}
