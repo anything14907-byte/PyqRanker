@@ -1344,7 +1344,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
               </p>
               <div className="pt-1 border-t border-amber-500/20 text-[10px] space-y-1 font-mono">
                 <div>🔒 <strong>Stored strictly in this browser</strong> (IndexedDB)</div>
-                <div>🚫 <strong>Never in source code</strong>, never in backups, never on PyqRanker servers</div>
+                <div>🚫 <strong>Never in source code</strong>, never in backups, never on remote servers</div>
                 <div>💡 <strong>100% Offline fallback</strong>: Leave OFF anytime to use local rule-based parsing</div>
               </div>
             </div>

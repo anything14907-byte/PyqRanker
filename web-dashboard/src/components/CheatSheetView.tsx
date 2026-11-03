@@ -93,7 +93,7 @@ export const CheatSheetView: React.FC<CheatSheetViewProps> = ({
               <span className="text-xs font-mono font-bold text-amber-500">
                 {cheatQuestions.length} Must-Study PYQs
               </span>
-              <div className="text-[10px] text-paper-muted dark:text-night-muted mt-0.5">PyqRanker</div>
+              <div className="text-[10px] text-paper-muted dark:text-night-muted mt-0.5">Study OS</div>
             </div>
           </div>
         </div>

@@ -12,7 +12,6 @@ import {
   MoreHorizontal,
   X,
   ShieldCheck,
-  Radio,
   Download,
   Sun,
   Zap,
@@ -37,7 +36,6 @@ interface MobileBottomNavProps {
   onSelectView: (view: ExtendedNavView) => void;
   onOpenBackup: () => void;
   dueFlashcardsCount: number;
-  onOpenSyncDevices?: () => void;
   onOpenInstallApp?: () => void;
 }
 
@@ -46,7 +44,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onSelectView,
   onOpenBackup,
   dueFlashcardsCount,
-  onOpenSyncDevices,
   onOpenInstallApp
 }) => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -113,17 +110,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               ))}
             </div>
 
-            {/* Quick Actions: Sync Devices & Install Native App */}
+            {/* Quick Actions: Backup & Install App */}
             <div className="grid grid-cols-2 gap-3 pt-1">
-              {onOpenSyncDevices && (
-                <button
-                  onClick={() => { setIsMoreOpen(false); onOpenSyncDevices(); }}
-                  className="p-3.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 font-bold text-xs flex items-center justify-center gap-2 btn-tactile min-h-[44px]"
-                >
-                  <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
-                  <span>Sync Devices</span>
-                </button>
-              )}
+              <button
+                onClick={() => { setIsMoreOpen(false); onOpenBackup(); }}
+                className="p-3.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/40 text-cyan-500 dark:text-cyan-400 font-bold text-xs flex items-center justify-center gap-2 btn-tactile min-h-[44px]"
+              >
+                <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                <span>Backup & Sync</span>
+              </button>
               {onOpenInstallApp && (
                 <button
                   onClick={() => { setIsMoreOpen(false); onOpenInstallApp(); }}

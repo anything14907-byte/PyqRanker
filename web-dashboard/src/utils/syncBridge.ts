@@ -58,7 +58,7 @@ export function loadSavedQuestions(defaultQuestions: PYQQuestion[]): PYQQuestion
 export function exportJsonSnapshot(questions: PYQQuestion[], activeSubjectId: SubjectId) {
   const snapshot = {
     exportedAt: new Date().toISOString(),
-    appName: 'PyqRanker',
+    appName: 'Study OS',
     version: '1.0.0',
     activeSubjectId,
     questionsCount: questions.length,
@@ -68,7 +68,7 @@ export function exportJsonSnapshot(questions: PYQQuestion[], activeSubjectId: Su
   const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(snapshot, null, 2));
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute('href', dataStr);
-  downloadAnchor.setAttribute('download', `PyqRanker_Backup_${activeSubjectId.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.json`);
+  downloadAnchor.setAttribute('download', `StudyOS_Backup_${activeSubjectId.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.json`);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();

@@ -138,7 +138,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-extrabold text-white tracking-tight">
-                  {deviceInfo.isMobile ? 'Install on Your Phone' : 'Install PyqRanker App'}
+                  {deviceInfo.isMobile ? 'Install on Your Phone' : 'Install Study OS App'}
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/10 text-cyan-300 border border-white/15">
                   {deviceInfo.platformName}
@@ -162,7 +162,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
         {isStandalone && (
           <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center gap-2.5 text-xs text-emerald-300">
             <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span className="font-semibold">PyqRanker is already installed and running as a standalone app!</span>
+            <span className="font-semibold">Study OS is already installed and running as a standalone app!</span>
           </div>
         )}
 
@@ -199,7 +199,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
                     3
                   </div>
                   <div>
-                    Tap <strong>Add</strong> in the top-right corner. PyqRanker will now launch full-screen from your home screen like a native iOS app!
+                    Tap <strong>Add</strong> in the top-right corner. Study OS will now launch full-screen from your home screen like a native iOS app!
                   </div>
                 </div>
               </div>
@@ -280,7 +280,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
                   <span>Scan with Phone Camera to Install</span>
                 </div>
                 <p className="text-[11px] text-slate-300 leading-relaxed">
-                  Open your iPhone or Android camera to instantly load PyqRanker on your mobile device and add it to your home screen.
+                  Open your iPhone or Android camera to instantly load Study OS on your mobile device and add it to your home screen.
                 </p>
               </div>
             </div>

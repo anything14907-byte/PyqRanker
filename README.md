@@ -1,4 +1,4 @@
-# PyqRanker: Personal College Exam Command Center & PYQ Study Hub
+# Study OS: Personal College Exam Command Center & Academic Hub
 
 [![Manifest V3](https://img.shields.io/badge/Chrome%20Extension-Manifest%20V3-blue.svg)](https://developer.chrome.com/docs/extensions/mv3/)
 [![React 18](https://img.shields.io/badge/React-18.3-61dafb.svg)](https://react.dev/)
@@ -6,7 +6,7 @@
 [![Design](https://img.shields.io/badge/UI-Aurora%20HUD%20Command%20Center-00F0FF.svg)]()
 [![Zero External Keys](https://img.shields.io/badge/Setup-100%25%20Local%20%26%20Self--Contained-emerald.svg)]()
 
-> **PyqRanker** is an Apple VisionOS & Cyberpunk HUD-inspired **Personal College Exam Command Center & PYQ Study Hub** for university students. It combines real-time ticking exam countdowns for every subject, dynamic custom subject creation/deletion, a smart AI-style study coach, an embedded YouTube lecture vault with side-by-side timestamps & notes, a client-side PDF document vault, 4-card deep concept explainers with 3D memory flashcards, and a high-repeat university PYQ bank with inline active recall testing.
+> **Study OS** is an Apple Liquid Glass & Fluid Dynamic **Personal College Exam Command Center & Academic Hub** for university students. It combines real-time ticking exam countdowns for every subject, dynamic custom subject creation/deletion, a smart AI-style study coach, an embedded YouTube lecture vault with side-by-side timestamps & notes, a client-side PDF document vault, 4-card deep concept explainers with 3D memory flashcards, and a high-repeat university PYQ bank with inline active recall testing.
 
 **Live Deployment on GitHub Pages:** [https://anything14907-byte.github.io/creative/](https://anything14907-byte.github.io/creative/)
 

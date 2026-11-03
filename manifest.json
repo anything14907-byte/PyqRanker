@@ -1,6 +1,6 @@
 {
-  "name": "PyqRanker — College Exam Study Hub",
-  "short_name": "PyqRanker",
+  "name": "Study OS — College Exam & Academic Hub",
+  "short_name": "Study OS",
   "description": "Smart University PYQ Matcher, Syllabus Tracker, Pomodoro Focus Timer & Exam Command Center",
   "start_url": "./",
   "scope": "./",

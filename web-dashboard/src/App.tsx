@@ -31,9 +31,7 @@ import { SearchIndexItem } from './utils/searchService';
 import { SpaceScene } from './components/SpaceScene';
 import { LiquidAuroraScene } from './components/LiquidAuroraScene';
 import { CommandSubHeader } from './components/CommandSubHeader';
-import { DeviceSyncModal } from './components/DeviceSyncModal';
 import { InstallAppModal } from './components/InstallAppModal';
-import { deviceSyncService, SyncPayload } from './services/deviceSyncService';
 import confetti from 'canvas-confetti';
 import { Sparkles } from 'lucide-react';
 
@@ -73,9 +71,7 @@ function DashboardContent() {
   const [isAddSubjectOpen, setIsAddSubjectOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<SubjectMeta | null>(null);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
-  const [syncPeersCount, setSyncPeersCount] = useState(1);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showSyncSuccessBanner, setShowSyncSuccessBanner] = useState(false);
 
@@ -202,12 +198,69 @@ function DashboardContent() {
     }
   }, []);
 
-  // Real-time broadcast helper across paired devices
+  // Cross-Tab Broadcast Helper (Lightweight Native Web BroadcastChannel)
   const broadcastLiveState = useCallback(() => {
-    deviceSyncService.broadcastStateUpdate();
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('study_os_channel');
+        bc.postMessage({ type: 'LOCAL_DATA_CHANGED', timestamp: Date.now() });
+        bc.close();
+      }
+    } catch {}
   }, []);
 
-  // Listen for master state imported (from QR, magic link, WebRTC sync, or BroadcastChannel)
+  // Listen for multi-tab updates
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
+    const bc = new BroadcastChannel('study_os_channel');
+    bc.onmessage = (event) => {
+      if (event.data?.type === 'LOCAL_DATA_CHANGED') {
+        const active = storageService.getActiveExam();
+        setActiveExamId(active);
+        reloadExamData(active);
+      }
+    };
+    return () => {
+      bc.close();
+    };
+  }, [reloadExamData]);
+
+  // Fast 1-Click JSON Backup & Smart Sync Handlers
+  const handleFastExport = useCallback(() => {
+    try {
+      storageService.exportBackup();
+      showToast('📦 Study OS backup exported successfully!', 'success');
+    } catch (err: any) {
+      showToast(`Export failed: ${err?.message || err}`, 'error');
+    }
+  }, [showToast]);
+
+  const handleFastImport = useCallback((jsonStr: string) => {
+    try {
+      const res = storageService.importFullAppState(jsonStr);
+      if (res.success) {
+        setExamSessions(storageService.getExamSessions());
+        const active = storageService.getActiveExam();
+        setActiveExamId(active);
+        reloadExamData(active);
+        setShowSyncSuccessBanner(true);
+        showToast('✨ Study OS data imported & merged successfully!', 'success');
+        try {
+          confetti({
+            particleCount: 90,
+            spread: 75,
+            origin: { y: 0.55 }
+          });
+        } catch {}
+      } else {
+        showToast(`Import error: ${res.message}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`Failed to parse backup file: ${err?.message || err}`, 'error');
+    }
+  }, [reloadExamData, showToast]);
+
+  // Listen for master state imported (from BackupModal, fast import, or BroadcastChannel)
   useEffect(() => {
     const handleMasterStateImported = () => {
       setExamSessions(storageService.getExamSessions());
@@ -239,48 +292,8 @@ function DashboardContent() {
     };
   }, [reloadExamData]);
 
-  // WebRTC PeerJS & BroadcastChannel Multi-Device State Sync
-  useEffect(() => {
-    const unsubSync = deviceSyncService.subscribe((msg: SyncPayload) => {
-      if ((msg.type === 'SYNC_STATE' || msg.type === 'STATE_UPDATE') && (msg.data || msg.payload)) {
-        try {
-          storageService.importFullAppState(msg.data || msg.payload);
-          setExamSessions(storageService.getExamSessions());
-          const newActive = storageService.getActiveExam();
-          setActiveExamId(newActive);
-          reloadExamData(newActive);
-          showToast(`⚡ Live sync: updated from ${msg.senderDevice}`, 'info');
-        } catch (e) {
-          console.error('Failed to apply sync state', e);
-        }
-      } else if (msg.type === 'VIEW_CHANGE' && msg.payload?.view) {
-        setCurrentView(msg.payload.view as MainNavView);
-        if (msg.payload.activeSubjectId) {
-          setActiveSubjectId(msg.payload.activeSubjectId);
-        }
-        showToast(`Navigated via ${msg.senderDevice}`, 'info');
-      } else if (msg.type === 'REQUEST_STATE') {
-        try {
-          deviceSyncService.broadcastStateUpdate();
-        } catch (e) {
-          console.error('Failed to broadcast state on request', e);
-        }
-      }
-    });
-
-    const unsubStatus = deviceSyncService.onStatus((status) => {
-      setSyncPeersCount(Math.max(1, status.connectedPeersCount));
-    });
-
-    return () => {
-      unsubSync();
-      unsubStatus();
-    };
-  }, [reloadExamData, showToast]);
-
   const handleSelectView = (view: MainNavView) => {
     setCurrentView(view);
-    deviceSyncService.syncView(view, activeSubjectId);
   };
 
   // Exam switcher handlers (Requirement 3)
@@ -714,9 +727,9 @@ function DashboardContent() {
           currentView={currentView}
           onSelectView={handleSelectView}
           onOpenBackup={() => setIsBackupModalOpen(true)}
-          onOpenSyncDevices={() => setIsSyncModalOpen(true)}
+          onFastExport={handleFastExport}
+          onFastImport={handleFastImport}
           onOpenInstallApp={() => setIsInstallModalOpen(true)}
-          syncPeersCount={syncPeersCount}
         />
 
         {/* ROW 2: Dedicated Hero Command & Filter Bar (Exam Type Pills + Global Spotlight Search) */}
@@ -929,7 +942,6 @@ function DashboardContent() {
         currentView={currentView as ExtendedNavView}
         onSelectView={(view) => handleSelectView(view as MainNavView)}
         onOpenBackup={() => setIsBackupModalOpen(true)}
-        onOpenSyncDevices={() => setIsSyncModalOpen(true)}
         onOpenInstallApp={() => setIsInstallModalOpen(true)}
         dueFlashcardsCount={dueFlashcardsCount}
       />
@@ -956,17 +968,6 @@ function DashboardContent() {
         onClose={() => setIsBackupModalOpen(false)}
         onDataReloaded={handleDataReloaded}
         onShowToast={showToast}
-      />
-
-      {/* Real-Time Multi-Device Connection Hub Modal (WebRTC + QR Code) */}
-      <DeviceSyncModal
-        isOpen={isSyncModalOpen}
-        onClose={() => setIsSyncModalOpen(false)}
-        onShowToast={showToast}
-        onStateSynced={() => {
-          handleDataReloaded();
-          showToast('Devices synced successfully! ✨', 'success');
-        }}
       />
 
       {/* Smart Device-Aware Install App Modal (PWA / iOS Safari / Desktop QR) */}
