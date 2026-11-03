@@ -224,6 +224,38 @@ export interface DayStudyPlan {
   topics: PlannerDayTopic[];
 }
 
+export interface MasterAppState {
+  version: string;
+  timestamp: number;
+  sourceDevice?: string;
+  activeExamId: string;
+  examSessions: ExamSession[];
+  activeSubjectId: string;
+  themeMode: string;
+  theme: string;
+  liquidMotionEnabled: boolean;
+  subjectSortMode: 'date' | 'custom';
+  timerSettings?: {
+    focusMinutes: number;
+    shortBreakMinutes: number;
+    longBreakMinutes: number;
+    soundEnabled: boolean;
+  };
+  videoPositions?: Record<string, number>;
+  vaultActiveVideoId?: string;
+  exams: Record<string, {
+    subjects: SubjectMeta[];
+    questions: PYQQuestion[];
+    tasks: StudyTask[];
+    videos: VideoResource[];
+    pdfs: PdfResource[];
+    topics: SyllabusTopic[];
+    pomodoroLogs: PomodoroSession[];
+    flashcards: Flashcard[];
+  }>;
+  rawKeys?: Record<string, string>;
+}
+
 export interface FullBackupData {
   version: string;
   exportedAt: string;

@@ -34,6 +34,8 @@ import { CommandSubHeader } from './components/CommandSubHeader';
 import { DeviceSyncModal } from './components/DeviceSyncModal';
 import { InstallAppModal } from './components/InstallAppModal';
 import { deviceSyncService, SyncPayload } from './services/deviceSyncService';
+import confetti from 'canvas-confetti';
+import { Sparkles } from 'lucide-react';
 
 function DashboardContent() {
   // 1. Multiple Exams State (Requirement 3)
@@ -75,6 +77,7 @@ function DashboardContent() {
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [syncPeersCount, setSyncPeersCount] = useState(1);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showSyncSuccessBanner, setShowSyncSuccessBanner] = useState(false);
 
   // Toast feedback
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -199,17 +202,54 @@ function DashboardContent() {
     }
   }, []);
 
+  // Real-time broadcast helper across paired devices
+  const broadcastLiveState = useCallback(() => {
+    deviceSyncService.broadcastStateUpdate();
+  }, []);
+
+  // Listen for master state imported (from QR, magic link, WebRTC sync, or BroadcastChannel)
+  useEffect(() => {
+    const handleMasterStateImported = () => {
+      setExamSessions(storageService.getExamSessions());
+      const activeExam = storageService.getActiveExam();
+      setActiveExamId(activeExam);
+      reloadExamData(activeExam);
+      const activeSub = localStorage.getItem('exam_hub_v3_active_subject') || '';
+      if (activeSub) setActiveSubjectId(activeSub);
+    };
+
+    const handleQrSynced = () => {
+      handleMasterStateImported();
+      setShowSyncSuccessBanner(true);
+      try {
+        confetti({
+          particleCount: 90,
+          spread: 75,
+          origin: { y: 0.55 }
+        });
+      } catch {}
+    };
+
+    window.addEventListener('pyq-master-state-imported', handleMasterStateImported);
+    window.addEventListener('pyq-qr-state-synced', handleQrSynced);
+
+    return () => {
+      window.removeEventListener('pyq-master-state-imported', handleMasterStateImported);
+      window.removeEventListener('pyq-qr-state-synced', handleQrSynced);
+    };
+  }, [reloadExamData]);
+
   // WebRTC PeerJS & BroadcastChannel Multi-Device State Sync
   useEffect(() => {
     const unsubSync = deviceSyncService.subscribe((msg: SyncPayload) => {
-      if (msg.type === 'SYNC_STATE' && msg.payload) {
+      if ((msg.type === 'SYNC_STATE' || msg.type === 'STATE_UPDATE') && (msg.data || msg.payload)) {
         try {
-          storageService.restoreBackup(msg.payload);
+          storageService.importFullAppState(msg.data || msg.payload);
           setExamSessions(storageService.getExamSessions());
           const newActive = storageService.getActiveExam();
           setActiveExamId(newActive);
           reloadExamData(newActive);
-          showToast(`⚡ Synced live from ${msg.senderDevice}`, 'info');
+          showToast(`⚡ Live sync: updated from ${msg.senderDevice}`, 'info');
         } catch (e) {
           console.error('Failed to apply sync state', e);
         }
@@ -221,8 +261,7 @@ function DashboardContent() {
         showToast(`Navigated via ${msg.senderDevice}`, 'info');
       } else if (msg.type === 'REQUEST_STATE') {
         try {
-          const fullBackup = storageService.getBackupObject();
-          deviceSyncService.broadcastState(fullBackup);
+          deviceSyncService.broadcastStateUpdate();
         } catch (e) {
           console.error('Failed to broadcast state on request', e);
         }
@@ -251,6 +290,7 @@ function DashboardContent() {
     reloadExamData(examId);
     const session = examSessions.find(e => e.id === examId);
     showToast(`Switched to: ${session?.name || examId}`, 'info');
+    broadcastLiveState();
   };
 
   const handleAddExam = (name: string) => {
@@ -259,12 +299,14 @@ function DashboardContent() {
     setActiveExamId(newSession.id);
     reloadExamData(newSession.id);
     showToast(`Created exam: "${name}"! 🎓`, 'success');
+    broadcastLiveState();
   };
 
   const handleRenameExam = (examId: string, newName: string) => {
     const updated = storageService.renameExamSession(examId, newName);
     setExamSessions(updated);
     showToast(`Renamed exam to "${newName}"`, 'success');
+    broadcastLiveState();
   };
 
   const handleDeleteExam = (examId: string) => {
@@ -274,6 +316,7 @@ function DashboardContent() {
     setActiveExamId(nextExam);
     reloadExamData(nextExam);
     showToast('Exam deleted.', 'info');
+    broadcastLiveState();
   };
 
   // Find active subject object
@@ -371,6 +414,7 @@ function DashboardContent() {
     setIsAddSubjectOpen(false);
     setCurrentView('syllabus');
     showToast(`Created subject "${newSubject.name}"! 🚀`, 'success');
+    broadcastLiveState();
   };
 
   const handleUpdateSubject = (updatedSubject: SubjectMeta) => {
@@ -378,6 +422,7 @@ function DashboardContent() {
     setSubjects(updated);
     setTopics(storageService.getTopics(undefined, activeExamId));
     showToast(`Updated "${updatedSubject.name}"!`, 'success');
+    broadcastLiveState();
   };
 
   const handleDeleteSubject = (id: string) => {
@@ -394,11 +439,13 @@ function DashboardContent() {
       localStorage.setItem('exam_hub_v3_active_subject', updated[0].id);
     }
     showToast('Subject deleted.', 'info');
+    broadcastLiveState();
   };
 
   const handleReorderSubjects = (reordered: SubjectMeta[]) => {
     storageService.saveSubjects(reordered, activeExamId);
     setSubjects(reordered);
+    broadcastLiveState();
   };
 
   // ==========================================
@@ -407,22 +454,26 @@ function DashboardContent() {
   const handleAddUnit = (subjectId: string, unitLabel: string, unitTitle?: string) => {
     const updated = storageService.addUnit(subjectId, unitLabel, unitTitle, activeExamId);
     setSubjects(updated);
+    broadcastLiveState();
   };
 
   const handleRenameUnit = (subjectId: string, unitId: string, newLabel: string, newTitle?: string) => {
     const updated = storageService.renameUnit(subjectId, unitId, newLabel, newTitle, activeExamId);
     setSubjects(updated);
+    broadcastLiveState();
   };
 
   const handleDeleteUnit = (subjectId: string, unitId: string) => {
     const updated = storageService.deleteUnit(subjectId, unitId, activeExamId);
     setSubjects(updated);
     setTopics(storageService.getTopics(undefined, activeExamId));
+    broadcastLiveState();
   };
 
   const handleReorderUnit = (subjectId: string, unitId: string, direction: 'up' | 'down') => {
     const updated = storageService.reorderUnit(subjectId, unitId, direction, activeExamId);
     setSubjects(updated);
+    broadcastLiveState();
   };
 
   // ==========================================
@@ -431,44 +482,52 @@ function DashboardContent() {
   const handleToggleTopicCompleted = (topicId: string) => {
     const updated = storageService.toggleTopicCompleted(topicId, activeExamId);
     setTopics(updated);
+    broadcastLiveState();
   };
 
   const handleSetTopicMastery = (topicId: string, mastery: TopicMastery) => {
     const updated = storageService.setTopicMastery(topicId, mastery, activeExamId);
     setTopics(updated);
     showToast(`Marked topic as ${mastery.toUpperCase()}`, 'info');
+    broadcastLiveState();
   };
 
   const handleAddTopic = (topic: SyllabusTopic) => {
     const updated = storageService.addTopic(topic, activeExamId);
     setTopics(updated);
+    broadcastLiveState();
   };
 
   const handleDeleteTopic = (topicId: string) => {
     const updated = storageService.deleteTopic(topicId, activeExamId);
     setTopics(updated);
     showToast('Topic removed from syllabus.', 'info');
+    broadcastLiveState();
   };
 
   const handleAddTopicVideo = (topicId: string, videoUrl: string) => {
     const updated = storageService.addTopicVideo(topicId, videoUrl, activeExamId);
     setTopics(updated);
+    broadcastLiveState();
   };
 
   const handleRemoveTopicVideo = (topicId: string, videoUrl: string) => {
     const updated = storageService.removeTopicVideo(topicId, videoUrl, activeExamId);
     setTopics(updated);
+    broadcastLiveState();
   };
 
   const handleUpdateTopicTitle = (topicId: string, newTitle: string) => {
     const updated = storageService.updateTopicTitle(topicId, newTitle, activeExamId);
     setTopics(updated);
     showToast('Topic title updated!', 'success');
+    broadcastLiveState();
   };
 
   const handleReorderTopics = (reorderedTopics: SyllabusTopic[]) => {
     const updated = storageService.reorderTopics(reorderedTopics, activeExamId);
     setTopics(updated);
+    broadcastLiveState();
   };
 
   // ==========================================
@@ -477,6 +536,7 @@ function DashboardContent() {
   const handleToggleMastered = (id: string) => {
     const updated = storageService.toggleQuestionMastered(id);
     setQuestions(updated);
+    broadcastLiveState();
   };
 
   const handleSaveAnswer = (id: string, answer: string, score: number) => {
@@ -488,6 +548,7 @@ function DashboardContent() {
     });
     setQuestions(updated);
     storageService.saveQuestions(updated, activeExamId);
+    broadcastLiveState();
   };
 
   const handleAddQuestion = (q: PYQQuestion) => {
@@ -495,6 +556,7 @@ function DashboardContent() {
     setQuestions(updated);
     setTopics(storageService.getTopics(undefined, activeExamId));
     showToast('Question saved to subject PYQ bank! 🔥', 'success');
+    broadcastLiveState();
   };
 
   // ==========================================
@@ -505,12 +567,14 @@ function DashboardContent() {
     setPomodoroLogs(updated);
     const subName = subjects.find(s => s.id === subjectId)?.name || 'Subject';
     showToast(`Logged ${minutes} min focus session for ${subName}! 🔥`, 'success');
+    broadcastLiveState();
   };
 
   const handleResetPomodoro = () => {
     storageService.resetPomodoroLogs(activeExamId);
     setPomodoroLogs([]);
     showToast('Focus timer data reset to 0 mins.', 'info');
+    broadcastLiveState();
   };
 
   // ==========================================
@@ -520,23 +584,27 @@ function DashboardContent() {
     const updated = storageService.addFlashcard(card, activeExamId);
     setFlashcards(updated);
     showToast('Flashcard saved! 🧠', 'success');
+    broadcastLiveState();
   };
 
   const handleUpdateFlashcard = (card: Flashcard) => {
     const updated = storageService.updateFlashcard(card, activeExamId);
     setFlashcards(updated);
     showToast('Flashcard updated!', 'success');
+    broadcastLiveState();
   };
 
   const handleReviewCard = (cardId: string, rating: 'hard' | 'good' | 'easy') => {
     const updated = storageService.reviewFlashcard(cardId, rating, activeExamId);
     setFlashcards(updated);
+    broadcastLiveState();
   };
 
   const handleDeleteFlashcard = (cardId: string) => {
     const updated = storageService.deleteFlashcard(cardId, activeExamId);
     setFlashcards(updated);
     showToast('Flashcard deleted.', 'info');
+    broadcastLiveState();
   };
 
   // ==========================================
@@ -546,23 +614,27 @@ function DashboardContent() {
     const updated = storageService.addVideo(video, activeExamId);
     setVideos(updated);
     showToast('Lecture saved to YouTube Vault! 🎥', 'success');
-  }, [activeExamId, showToast]);
+    broadcastLiveState();
+  }, [activeExamId, showToast, broadcastLiveState]);
 
   const handleUpdateVideoNotes = useCallback((id: string, notes: string) => {
     const updated = storageService.updateVideoNotes(id, notes, activeExamId);
     setVideos(updated);
-  }, [activeExamId]);
+    broadcastLiveState();
+  }, [activeExamId, broadcastLiveState]);
 
   const handleToggleVideoWatched = useCallback((id: string) => {
     const updated = storageService.toggleVideoWatched(id, activeExamId);
     setVideos(updated);
-  }, [activeExamId]);
+    broadcastLiveState();
+  }, [activeExamId, broadcastLiveState]);
 
   const handleDeleteVideo = useCallback((id: string) => {
     const updated = storageService.deleteVideo(id, activeExamId);
     setVideos(updated);
     showToast('Video removed from Vault.', 'info');
-  }, [activeExamId, showToast]);
+    broadcastLiveState();
+  }, [activeExamId, showToast, broadcastLiveState]);
 
   // ==========================================
   // PDF HANDLERS
@@ -571,18 +643,21 @@ function DashboardContent() {
     const updated = storageService.addPdf(pdf, activeExamId);
     setPdfs(updated);
     showToast('PDF saved to notes! 📄', 'success');
+    broadcastLiveState();
   };
 
   const handleDeletePdf = (id: string) => {
     const updated = storageService.deletePdf(id, activeExamId);
     setPdfs(updated);
     showToast('Document removed.', 'info');
+    broadcastLiveState();
   };
 
   // Task Handlers for Workspace
   const handleToggleTask = (id: string) => {
     const updated = storageService.toggleTask(id, activeExamId);
     setTasks(updated);
+    broadcastLiveState();
   };
 
   const handleAddTask = (text: string, unitId?: string, unitNum?: number) => {
@@ -600,11 +675,13 @@ function DashboardContent() {
     const updated = storageService.addTask(newTask, activeExamId);
     setTasks(updated);
     showToast('Task added to checklist!', 'success');
+    broadcastLiveState();
   };
 
   const handleDeleteTask = (id: string) => {
     const updated = storageService.deleteTask(id, activeExamId);
     setTasks(updated);
+    broadcastLiveState();
   };
 
   const handleMoveItemToUnit = (
@@ -617,11 +694,13 @@ function DashboardContent() {
     if (type === 'task') setTasks(storageService.getTasks(activeExamId));
     if (type === 'video') setVideos(storageService.getVideos(activeExamId));
     if (type === 'pdf') setPdfs(storageService.getPdfs(activeExamId));
+    broadcastLiveState();
   };
 
   const handleDataReloaded = () => {
     setExamSessions(storageService.getExamSessions());
     reloadExamData(activeExamId);
+    broadcastLiveState();
   };
 
   return (
@@ -657,6 +736,33 @@ function DashboardContent() {
           flashcards={flashcards}
           onNavigateToSearchResult={handleNavigateToSearchResult}
         />
+
+        {/* Full-State Synchronized Celebratory Banner */}
+        {showSyncSuccessBanner && (
+          <div className="w-full px-4 sm:px-7 pt-3 animate-fade-slide-up">
+            <div className="relative overflow-hidden rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-indigo-500/20 border border-emerald-500/50 backdrop-blur-2xl shadow-glow-cyan flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-400 to-cyan-400 text-black flex items-center justify-center shrink-0 font-bold shadow-md">
+                  <Sparkles className="w-5 h-5 text-black" />
+                </div>
+                <div>
+                  <h4 className="text-sm sm:text-base font-extrabold text-white tracking-tight flex items-center gap-2">
+                    <span>✨ Full website state successfully synced from connected device!</span>
+                  </h4>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Your subjects, syllabus completion status, exam dates, timers, and flashcards are now 100% up to date and in sync across all devices.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSyncSuccessBanner(false)}
+                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/20 self-end sm:self-center shrink-0 active:scale-95"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
       {/* Main Content Area: 100% corner-to-corner full viewport width (16px 28px edge padding) */}
       <main className="w-full px-4 sm:px-7 py-4 pb-28 md:pb-12 box-border">

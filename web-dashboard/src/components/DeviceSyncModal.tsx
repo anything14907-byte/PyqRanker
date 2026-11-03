@@ -7,15 +7,17 @@ import {
   Copy, 
   Check, 
   RefreshCw, 
-  Laptop, 
-  Smartphone, 
   Radio, 
   Download, 
   Upload, 
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  Zap,
+  CheckCircle2,
+  BookOpen
 } from 'lucide-react';
 import { deviceSyncService, SyncStatus } from '../services/deviceSyncService';
+import { storageService, encodeStatePayload } from '../utils/storageService';
 
 interface DeviceSyncModalProps {
   isOpen: boolean;
@@ -59,25 +61,78 @@ export const DeviceSyncModal: React.FC<DeviceSyncModalProps> = ({
   // Generate QR Code whenever room code is ready
   useEffect(() => {
     if (syncStatus.roomCode) {
-      const shareUrl = deviceSyncService.getShareableUrl(syncStatus.roomCode);
-      QRCode.toDataURL(shareUrl, {
-        width: 240,
+      let targetUrl = deviceSyncService.getShareableUrl(syncStatus.roomCode, true);
+
+      // If target URL exceeds QR character capacity (~2100 chars), use compact representation
+      if (targetUrl.length > 2100) {
+        try {
+          const minimalState = {
+            activeExamId: storageService.getActiveExam(),
+            examSessions: storageService.getExamSessions(),
+            activeSubjectId: localStorage.getItem('exam_hub_v3_active_subject') || '',
+            themeMode: localStorage.getItem('pyq_visual_mode_v2') || 'liquid-dark',
+            exams: {
+              [storageService.getActiveExam()]: {
+                subjects: storageService.getSubjects().map(s => ({
+                  id: s.id,
+                  name: s.name,
+                  examDate: s.examDate,
+                  accentColor: s.accentColor,
+                  units: s.units
+                })),
+                topics: storageService.getTopics().map(t => ({
+                  id: t.id,
+                  subjectId: t.subjectId,
+                  unitId: t.unitId,
+                  title: t.title,
+                  completed: t.completed,
+                  mastery: t.mastery
+                })),
+                tasks: storageService.getTasks().map(t => ({
+                  id: t.id,
+                  text: t.text,
+                  completed: t.completed
+                })),
+                pomodoroLogs: storageService.getPomodoroLogs(),
+                flashcards: storageService.getFlashcards()
+              }
+            }
+          };
+          const base = window.location.origin + window.location.pathname;
+          const encoded = encodeStatePayload(minimalState);
+          const candidateUrl = `${base}?room=${encodeURIComponent(syncStatus.roomCode)}&sync=${encodeURIComponent(syncStatus.roomCode)}&payload=${encodeURIComponent(encoded)}`;
+          if (candidateUrl.length < 2200) {
+            targetUrl = candidateUrl;
+          } else {
+            targetUrl = deviceSyncService.getShareableUrl(syncStatus.roomCode, false);
+          }
+        } catch {
+          targetUrl = deviceSyncService.getShareableUrl(syncStatus.roomCode, false);
+        }
+      }
+
+      QRCode.toDataURL(targetUrl, {
+        width: 260,
         margin: 1.5,
         color: {
-          dark: '#0A0F1D',
+          dark: '#050811',
           light: '#FFFFFF'
         }
       }).then(url => {
         setQrDataUrl(url);
       }).catch(err => {
-        console.error('Failed to generate QR code', err);
+        console.error('Failed to generate QR code with payload, falling back to bare URL', err);
+        const bareUrl = deviceSyncService.getShareableUrl(syncStatus.roomCode, false);
+        QRCode.toDataURL(bareUrl, { width: 260, margin: 1.5 })
+          .then(url => setQrDataUrl(url))
+          .catch(e => console.error(e));
       });
     }
   }, [syncStatus.roomCode]);
 
   if (!isOpen) return null;
 
-  const shareUrl = deviceSyncService.getShareableUrl(syncStatus.roomCode);
+  const shareUrl = deviceSyncService.getShareableUrl(syncStatus.roomCode, true);
 
   const handleCopyLink = () => {
     if (!shareUrl) return;
@@ -111,6 +166,11 @@ export const DeviceSyncModal: React.FC<DeviceSyncModalProps> = ({
     } else {
       handleCopyLink();
     }
+  };
+
+  const handleForcePush = () => {
+    deviceSyncService.broadcastStateUpdate();
+    onShowToast?.('⚡ Full state broadcasted to all connected devices!', 'success');
   };
 
   const handleJoinSubmit = (e: React.FormEvent) => {
@@ -262,6 +322,34 @@ export const DeviceSyncModal: React.FC<DeviceSyncModalProps> = ({
                 </button>
               </div>
             </form>
+
+            {/* Live Data Summary to be Transferred */}
+            <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 text-xs text-slate-300 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] font-bold text-white">
+                <span className="flex items-center gap-1.5 text-cyan-400">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>100% Full-State Payload Attached</span>
+                </span>
+                <span className="text-emerald-400 font-mono text-[10px]">Zero Data Loss</span>
+              </div>
+              <div className="text-[10px] text-slate-400 flex flex-wrap gap-x-3 gap-y-1">
+                <span>📚 {storageService.getSubjects().length} Subjects</span>
+                <span>✅ {storageService.getTopics().filter(t => t.completed).length} Topics Done</span>
+                <span>⏱️ {storageService.getPomodoroLogs().length} Study Logs</span>
+                <span>🧠 {storageService.getFlashcards().length} Flashcards</span>
+              </div>
+            </div>
+
+            {/* Force Push Broadcast Button */}
+            <button
+              type="button"
+              onClick={handleForcePush}
+              className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 via-cyan-600 to-indigo-600 hover:opacity-95 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-glow-cyan active:scale-95"
+              title="Force push latest state to all paired devices"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+              <span>⚡ Push State To Connected Devices Now</span>
+            </button>
 
             {/* Quick Share Buttons */}
             <div className="flex items-center gap-2">

@@ -14,7 +14,8 @@ import {
   DayStudyPlan,
   PlannerDayTopic,
   FullBackupData,
-  ExamSession
+  ExamSession,
+  MasterAppState
 } from '../types';
 import { INITIAL_QUESTIONS } from '../data/pyqData';
 
@@ -1813,9 +1814,393 @@ export const storageService = {
   // ==========================================
   // DATA SAVING: EXPORT & IMPORT BACKUP (JSON)
   // ==========================================
-  getBackupObject(): FullBackupData {
+  getFullAppState(compact = false): MasterAppState {
+    const examSessions = this.getExamSessions();
+    const activeExamId = this.getActiveExam();
+    const activeSubjectId = localStorage.getItem(STORAGE_KEYS.ACTIVE_SUBJECT) || '';
+    const themeMode = localStorage.getItem('pyq_visual_mode_v2') || 'liquid-dark';
+    const theme = localStorage.getItem(STORAGE_KEYS.THEME) || 'dark';
+    const liquidMotionEnabled = localStorage.getItem('pyq_liquid_motion_v1') !== 'false';
+    const subjectSortMode = this.getSubjectSortMode();
+
+    let timerSettings: any = undefined;
+    try {
+      const rawTimer = localStorage.getItem('pyq_focus_timer_settings_v1');
+      if (rawTimer) timerSettings = JSON.parse(rawTimer);
+    } catch {}
+
+    const videoPositions = this.getVideoPlaybackPositions();
+    const vaultActiveVideoId = this.getVaultActiveVideoId();
+
+    const exams: MasterAppState['exams'] = {};
+
+    examSessions.forEach(session => {
+      const eId = session.id;
+      const subjects = this.getSubjects(eId);
+      const allTopics = this.getTopics(undefined, eId);
+      const questions = this.getQuestions(eId);
+      const tasks = this.getTasks(eId);
+      const videos = this.getVideos(eId);
+      const pdfs = this.getPdfs(eId);
+      const pomodoroLogs = this.getPomodoroLogs(eId);
+      const flashcards = this.getFlashcards(undefined, eId);
+
+      if (compact) {
+        // Strip heavy textbook bullets from default questions to keep payload compact for QR encoding
+        const compactQuestions = questions.map(q => ({
+          id: q.id,
+          subjectId: q.subjectId,
+          subjectName: q.subjectName,
+          unit: q.unit,
+          unitTitle: q.unitTitle,
+          unitLabel: q.unitLabel,
+          unitId: q.unitId,
+          topicId: q.topicId,
+          topicTitle: q.topicTitle,
+          question: q.question,
+          marks: q.marks,
+          yearsAsked: q.yearsAsked,
+          repeatCount: q.repeatCount,
+          isHighProbability: q.isHighProbability,
+          expectedKeywords: q.expectedKeywords,
+          bullets: q.bullets && q.bullets.length <= 2 ? q.bullets : [],
+          diagramFormulaTip: q.diagramFormulaTip || '',
+          userStatus: q.userStatus,
+          userNotes: q.userNotes,
+          bookmarked: q.bookmarked,
+          isCustom: q.isCustom
+        } as PYQQuestion));
+
+        exams[eId] = {
+          subjects,
+          questions: compactQuestions,
+          tasks,
+          videos,
+          pdfs,
+          topics: allTopics,
+          pomodoroLogs,
+          flashcards
+        };
+      } else {
+        exams[eId] = {
+          subjects,
+          questions,
+          tasks,
+          videos,
+          pdfs,
+          topics: allTopics,
+          pomodoroLogs,
+          flashcards
+        };
+      }
+    });
+
     return {
-      version: '3.1.0',
+      version: '4.0.0',
+      timestamp: Date.now(),
+      sourceDevice: typeof navigator !== 'undefined' ? navigator.userAgent : 'Web App',
+      activeExamId,
+      examSessions,
+      activeSubjectId,
+      themeMode,
+      theme,
+      liquidMotionEnabled,
+      subjectSortMode,
+      timerSettings,
+      videoPositions,
+      vaultActiveVideoId,
+      exams
+    };
+  },
+
+  importFullAppState(incomingInput: any): { success: boolean; message: string; count: number } {
+    try {
+      if (!incomingInput) {
+        return { success: false, message: 'Empty sync payload received.', count: 0 };
+      }
+
+      let data: any = incomingInput;
+      if (typeof incomingInput === 'string') {
+        data = decodeStatePayload(incomingInput);
+      }
+      if (!data || typeof data !== 'object') {
+        return { success: false, message: 'Invalid sync payload structure.', count: 0 };
+      }
+
+      let count = 0;
+
+      // 1. Merge Exam Sessions
+      if (Array.isArray(data.examSessions) && data.examSessions.length > 0) {
+        const localSessions = this.getExamSessions();
+        const mergedSessionsMap = new Map<string, ExamSession>();
+        localSessions.forEach(s => mergedSessionsMap.set(s.id, s));
+        data.examSessions.forEach((s: ExamSession) => {
+          if (s && s.id) {
+            mergedSessionsMap.set(s.id, {
+              ...mergedSessionsMap.get(s.id),
+              ...s
+            });
+          }
+        });
+        const mergedList = Array.from(mergedSessionsMap.values());
+        this.saveExamSessions(mergedList);
+      }
+
+      // 2. Active Exam
+      if (data.activeExamId && typeof data.activeExamId === 'string') {
+        this.setActiveExam(data.activeExamId);
+      }
+
+      // 3. Merge Per-Exam Data
+      if (data.exams && typeof data.exams === 'object') {
+        Object.keys(data.exams).forEach(examId => {
+          const examBundle = data.exams[examId];
+          if (!examBundle) return;
+
+          // Merge Subjects
+          if (Array.isArray(examBundle.subjects) && examBundle.subjects.length > 0) {
+            const localSubjects = this.getSubjects(examId);
+            const subMap = new Map<string, SubjectMeta>();
+            localSubjects.forEach(s => subMap.set(s.id, s));
+
+            examBundle.subjects.forEach((incomingSub: SubjectMeta) => {
+              const existing = subMap.get(incomingSub.id);
+              if (existing) {
+                // Merge units by ID
+                const unitMap = new Map<string, SubjectUnit>();
+                (existing.units || []).forEach(u => unitMap.set(u.id, u));
+                (incomingSub.units || []).forEach(u => unitMap.set(u.id, { ...unitMap.get(u.id), ...u }));
+
+                subMap.set(incomingSub.id, {
+                  ...existing,
+                  ...incomingSub,
+                  examDate: incomingSub.examDate || existing.examDate,
+                  accentColor: incomingSub.accentColor || existing.accentColor,
+                  units: Array.from(unitMap.values())
+                });
+              } else {
+                subMap.set(incomingSub.id, incomingSub);
+              }
+            });
+            this.saveSubjects(Array.from(subMap.values()), examId);
+            count++;
+          }
+
+          // Merge Topics
+          if (Array.isArray(examBundle.topics)) {
+            const localTopics = this.getTopics(undefined, examId);
+            const topicMap = new Map<string, SyllabusTopic>();
+            localTopics.forEach(t => topicMap.set(t.id, t));
+
+            examBundle.topics.forEach((incomingTopic: SyllabusTopic) => {
+              const existing = topicMap.get(incomingTopic.id);
+              if (existing) {
+                topicMap.set(incomingTopic.id, {
+                  ...existing,
+                  ...incomingTopic,
+                  completed: incomingTopic.completed !== undefined ? incomingTopic.completed : existing.completed,
+                  mastery: incomingTopic.mastery || existing.mastery,
+                  videoUrls: Array.from(new Set([...(existing.videoUrls || []), ...(incomingTopic.videoUrls || [])]))
+                });
+              } else {
+                topicMap.set(incomingTopic.id, incomingTopic);
+              }
+            });
+            this.saveTopics(Array.from(topicMap.values()), examId);
+          }
+
+          // Merge Questions
+          if (Array.isArray(examBundle.questions)) {
+            const localQuestions = this.getQuestions(examId);
+            const qMap = new Map<string, PYQQuestion>();
+            localQuestions.forEach(q => qMap.set(q.id, q));
+
+            examBundle.questions.forEach((incomingQ: PYQQuestion) => {
+              const existing = qMap.get(incomingQ.id);
+              if (existing) {
+                qMap.set(incomingQ.id, {
+                  ...existing,
+                  ...incomingQ,
+                  userStatus: incomingQ.userStatus || existing.userStatus,
+                  bookmarked: incomingQ.bookmarked !== undefined ? incomingQ.bookmarked : existing.bookmarked,
+                  userNotes: incomingQ.userNotes || existing.userNotes
+                });
+              } else {
+                qMap.set(incomingQ.id, incomingQ);
+              }
+            });
+            this.saveQuestions(Array.from(qMap.values()), examId);
+          }
+
+          // Merge Tasks
+          if (Array.isArray(examBundle.tasks)) {
+            const localTasks = this.getTasks(examId);
+            const taskMap = new Map<string, StudyTask>();
+            localTasks.forEach(t => taskMap.set(t.id, t));
+            examBundle.tasks.forEach((inTask: StudyTask) => {
+              const existing = taskMap.get(inTask.id);
+              if (existing) {
+                taskMap.set(inTask.id, {
+                  ...existing,
+                  ...inTask,
+                  completed: inTask.completed !== undefined ? inTask.completed : existing.completed
+                });
+              } else {
+                taskMap.set(inTask.id, inTask);
+              }
+            });
+            this.saveTasks(Array.from(taskMap.values()), examId);
+          }
+
+          // Merge Videos
+          if (Array.isArray(examBundle.videos)) {
+            const localVideos = this.getVideos(examId);
+            const vidMap = new Map<string, VideoResource>();
+            localVideos.forEach(v => vidMap.set(v.id, v));
+            examBundle.videos.forEach((inVid: VideoResource) => {
+              const existing = vidMap.get(inVid.id);
+              if (existing) {
+                vidMap.set(inVid.id, {
+                  ...existing,
+                  ...inVid,
+                  isWatched: inVid.isWatched !== undefined ? inVid.isWatched : existing.isWatched,
+                  notes: inVid.notes || existing.notes
+                });
+              } else {
+                vidMap.set(inVid.id, inVid);
+              }
+            });
+            this.saveVideos(Array.from(vidMap.values()), examId);
+          }
+
+          // Merge PDFs
+          if (Array.isArray(examBundle.pdfs)) {
+            const localPdfs = this.getPdfs(examId);
+            const pdfMap = new Map<string, PdfResource>();
+            localPdfs.forEach(p => pdfMap.set(p.id, p));
+            examBundle.pdfs.forEach((inPdf: PdfResource) => {
+              pdfMap.set(inPdf.id, { ...(pdfMap.get(inPdf.id) || inPdf), ...inPdf });
+            });
+            this.savePdfs(Array.from(pdfMap.values()), examId);
+          }
+
+          // Merge Pomodoro Logs (Union by id)
+          if (Array.isArray(examBundle.pomodoroLogs)) {
+            const localLogs = this.getPomodoroLogs(examId);
+            const logMap = new Map<string, PomodoroSession>();
+            localLogs.forEach(l => logMap.set(l.id, l));
+            examBundle.pomodoroLogs.forEach((inLog: PomodoroSession) => {
+              logMap.set(inLog.id, inLog);
+            });
+            const mergedLogs = Array.from(logMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+            this.savePomodoroLogs(mergedLogs, examId);
+          }
+
+          // Merge Flashcards
+          if (Array.isArray(examBundle.flashcards)) {
+            const localCards = this.getFlashcards(undefined, examId);
+            const cardMap = new Map<string, Flashcard>();
+            localCards.forEach(c => cardMap.set(c.id, c));
+            examBundle.flashcards.forEach((inCard: Flashcard) => {
+              const existing = cardMap.get(inCard.id);
+              if (existing) {
+                cardMap.set(inCard.id, {
+                  ...existing,
+                  ...inCard,
+                  intervalStep: inCard.intervalStep !== undefined ? inCard.intervalStep : existing.intervalStep,
+                  nextReviewDate: inCard.nextReviewDate || existing.nextReviewDate
+                });
+              } else {
+                cardMap.set(inCard.id, inCard);
+              }
+            });
+            this.saveFlashcards(Array.from(cardMap.values()), examId);
+          }
+        });
+      }
+
+      // 4. Also handle legacy root-level properties if present
+      if (Array.isArray(data.subjects) && data.subjects.length > 0 && !data.exams) {
+        this.saveSubjects(data.subjects);
+      }
+      if (Array.isArray(data.topics) && !data.exams) {
+        this.saveTopics(data.topics);
+      }
+      if (Array.isArray(data.questions) && !data.exams) {
+        this.saveQuestions(data.questions);
+      }
+      if (Array.isArray(data.tasks) && !data.exams) {
+        this.saveTasks(data.tasks);
+      }
+      if (Array.isArray(data.videos) && !data.exams) {
+        this.saveVideos(data.videos);
+      }
+      if (Array.isArray(data.pdfs) && !data.exams) {
+        this.savePdfs(data.pdfs);
+      }
+      if (Array.isArray(data.pomodoroLogs) && !data.exams) {
+        this.savePomodoroLogs(data.pomodoroLogs);
+      }
+      if (Array.isArray(data.flashcards) && !data.exams) {
+        this.saveFlashcards(data.flashcards);
+      }
+
+      // 5. User Settings & Display Preferences
+      if (data.activeSubjectId && typeof data.activeSubjectId === 'string') {
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_SUBJECT, data.activeSubjectId);
+      }
+      if (data.themeMode && typeof data.themeMode === 'string') {
+        localStorage.setItem('pyq_visual_mode_v2', data.themeMode);
+      }
+      if (data.theme && typeof data.theme === 'string') {
+        localStorage.setItem(STORAGE_KEYS.THEME, data.theme);
+        if (typeof document !== 'undefined') {
+          document.documentElement.classList.remove('light', 'dark');
+          document.documentElement.classList.add(data.theme);
+        }
+      }
+      if (data.liquidMotionEnabled !== undefined) {
+        localStorage.setItem('pyq_liquid_motion_v1', String(data.liquidMotionEnabled));
+      }
+      if (data.subjectSortMode) {
+        this.setSubjectSortMode(data.subjectSortMode);
+      }
+      if (data.timerSettings) {
+        try {
+          localStorage.setItem('pyq_focus_timer_settings_v1', JSON.stringify(data.timerSettings));
+        } catch {}
+      }
+      if (data.videoPositions) {
+        this.saveVideoPlaybackPositions(data.videoPositions);
+      }
+      if (data.vaultActiveVideoId) {
+        this.setVaultActiveVideoId(data.vaultActiveVideoId);
+      }
+
+      // 6. Notify active app components without reloading page
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pyq-master-state-imported', { detail: data }));
+      }
+
+      return {
+        success: true,
+        message: 'Full state synchronized successfully with zero data loss!',
+        count
+      };
+    } catch (err: any) {
+      console.error('Failed to import full app state:', err);
+      return {
+        success: false,
+        message: `Import failed: ${err.message || 'Unknown error'}`,
+        count: 0
+      };
+    }
+  },
+
+  getBackupObject(): FullBackupData & { masterState?: MasterAppState } {
+    const master = this.getFullAppState();
+    return {
+      version: '4.0.0',
       exportedAt: new Date().toISOString(),
       subjects: this.getSubjects(),
       topics: this.getTopics(),
@@ -1826,12 +2211,13 @@ export const storageService = {
       pomodoroLogs: this.getPomodoroLogs(),
       flashcards: this.getFlashcards(),
       videoPositions: this.getVideoPlaybackPositions(),
-      vaultActiveVideoId: this.getVaultActiveVideoId()
+      vaultActiveVideoId: this.getVaultActiveVideoId(),
+      masterState: master
     };
   },
 
   exportBackup(): void {
-    const backup: FullBackupData = this.getBackupObject();
+    const backup = this.getBackupObject();
 
     const json = JSON.stringify(backup, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -1845,15 +2231,25 @@ export const storageService = {
     URL.revokeObjectURL(url);
   },
 
-  restoreBackup(backupData: FullBackupData | string): { success: boolean; message: string } {
+  restoreBackup(backupData: any): { success: boolean; message: string } {
     return this.importBackup(backupData);
   },
 
-  importBackup(backupInput: string | FullBackupData): { success: boolean; message: string } {
+  importBackup(backupInput: any): { success: boolean; message: string } {
     try {
       const data = typeof backupInput === 'string' ? JSON.parse(backupInput) : backupInput;
       if (!data || typeof data !== 'object') {
         return { success: false, message: 'Invalid backup JSON file structure.' };
+      }
+
+      if (data.masterState) {
+        const res = this.importFullAppState(data.masterState);
+        return { success: res.success, message: res.message };
+      }
+
+      if (data.exams || data.examSessions) {
+        const res = this.importFullAppState(data);
+        return { success: res.success, message: res.message };
       }
 
       if (Array.isArray(data.subjects) && data.subjects.length > 0) {
@@ -1885,6 +2281,10 @@ export const storageService = {
       }
       if (data.vaultActiveVideoId && typeof data.vaultActiveVideoId === 'string') {
         this.setVaultActiveVideoId(data.vaultActiveVideoId);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('pyq-master-state-imported', { detail: data }));
       }
 
       return { success: true, message: 'All study data, syllabus topics, and countdowns imported successfully!' };
@@ -2034,4 +2434,39 @@ export function runOneTimeStorageCleanup(): void {
 
 // Automatically execute once on script load
 runOneTimeStorageCleanup();
+
+/**
+ * Bulletproof URI / Base64 Safe Encoding & Decoding for QR Codes & Magic Links
+ */
+export function encodeStatePayload(data: any): string {
+  try {
+    const jsonStr = JSON.stringify(data);
+    const utf8Str = encodeURIComponent(jsonStr);
+    return btoa(utf8Str);
+  } catch (e) {
+    console.error('Failed to encode state payload', e);
+    return encodeURIComponent(JSON.stringify(data));
+  }
+}
+
+export function decodeStatePayload(encoded: string): any {
+  if (!encoded || !encoded.trim()) return null;
+  const cleanStr = encoded.trim();
+  try {
+    // 1. Try Base64 -> decodeURIComponent -> JSON parse
+    try {
+      const decodedB64 = atob(cleanStr);
+      const jsonStr = decodeURIComponent(decodedB64);
+      return JSON.parse(jsonStr);
+    } catch {
+      // 2. Fallback: URI Decode -> JSON parse
+      const decodedUri = decodeURIComponent(cleanStr);
+      return JSON.parse(decodedUri);
+    }
+  } catch (e) {
+    console.error('Failed to decode state payload:', e);
+    return null;
+  }
+}
+
 
