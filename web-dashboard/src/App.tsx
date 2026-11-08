@@ -31,6 +31,7 @@ import { SearchIndexItem } from './utils/searchService';
 import { CommandSubHeader } from './components/CommandSubHeader';
 import { InstallAppModal } from './components/InstallAppModal';
 import { OpenBookBinder } from './components/OpenBookBinder';
+import { recoverAndNormalizePdfs } from './utils/pdfStorageService';
 import confetti from 'canvas-confetti';
 import { Sparkles } from 'lucide-react';
 
@@ -106,6 +107,18 @@ function DashboardContent() {
     window.addEventListener('pyq-app-update-available', handleUpdate);
     return () => window.removeEventListener('pyq-app-update-available', handleUpdate);
   }, [showToast]);
+
+  // 🚨 CRITICAL: DEEP RECOVERY OF ALL PREVIOUSLY UPLOADED PDFs ACROSS LOCALSTORAGE & INDEXEDDB
+  useEffect(() => {
+    let isMounted = true;
+    recoverAndNormalizePdfs(activeExamId, subjects).then(recovered => {
+      if (isMounted && recovered && recovered.length > 0) {
+        setPdfs(recovered);
+      }
+    }).catch(err => console.warn('PDF Deep Recovery Notice:', err));
+
+    return () => { isMounted = false; };
+  }, [activeExamId, subjects.length]);
 
   // Reload all data when active exam changes (Requirement 3: Each exam has separate data)
   const reloadExamData = useCallback((examId: string) => {
@@ -588,6 +601,13 @@ function DashboardContent() {
     broadcastLiveState();
   };
 
+  const handleUpdatePdf = (pdf: PdfResource) => {
+    const updated = pdfs.map(p => p.id === pdf.id ? pdf : p);
+    storageService.savePdfs(updated, activeExamId);
+    setPdfs(updated);
+    broadcastLiveState();
+  };
+
   const handleDeletePdf = (id: string) => {
     const updated = storageService.deletePdf(id, activeExamId);
     setPdfs(updated);
@@ -715,6 +735,7 @@ function DashboardContent() {
             flashcards={flashcards}
             pomodoroLogs={pomodoroLogs}
             videos={videos}
+            pdfs={pdfs}
             onToggleTopicCompleted={handleToggleTopicCompleted}
             onSelectSubject={(id, unitId) => {
               handleSelectSubject(id, unitId);
@@ -750,10 +771,12 @@ function DashboardContent() {
               onToggleVideoWatched={handleToggleVideoWatched}
               onDeleteVideo={handleDeleteVideo}
               onAddPdf={handleAddPdf}
+              onUpdatePdf={handleUpdatePdf}
               onDeletePdf={handleDeletePdf}
               onAddQuestion={handleAddQuestion}
               onToggleQuestionMastered={handleToggleMastered}
               onSaveQuestionAnswer={handleSaveAnswer}
+              onAddFlashcard={handleAddFlashcard}
               onBackToShelf={() => setCurrentView('today')}
               onShowToast={showToast}
             />
@@ -816,10 +839,18 @@ function DashboardContent() {
             subjects={subjects}
             activeSubjectId={activeSubjectId}
             videos={videos}
+            pdfs={pdfs}
             onAddVideo={handleAddVideo}
             onUpdateVideoNotes={handleUpdateVideoNotes}
             onToggleVideoWatched={handleToggleVideoWatched}
             onDeleteVideo={handleDeleteVideo}
+            onAddPdf={handleAddPdf}
+            onDeletePdf={handleDeletePdf}
+            onUpdatePdf={handleUpdatePdf}
+            onOpenPdfInReader={(pdf) => {
+              handleSelectSubject(pdf.subjectId, pdf.unitId);
+              setCurrentView('syllabus');
+            }}
             onShowToast={showToast}
             isViewActive={currentView === 'vault'}
           />
@@ -833,6 +864,7 @@ function DashboardContent() {
             topics={topics}
             pdfs={pdfs}
             onAddPdf={handleAddPdf}
+            onUpdatePdf={handleUpdatePdf}
             onDeletePdf={handleDeletePdf}
             onAddQuestion={handleAddQuestion}
             onAddFlashcard={handleAddFlashcard}

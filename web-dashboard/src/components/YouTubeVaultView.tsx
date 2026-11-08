@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SubjectMeta, VideoResource } from '../types';
+import { SubjectMeta, VideoResource, PdfResource } from '../types';
 import { extractYoutubeId, storageService } from '../utils/storageService';
 import { YouTubeIframePlayer } from './YouTubeIframePlayer';
 import { 
@@ -12,18 +12,29 @@ import {
   ExternalLink, 
   Clock, 
   X,
-  Tv
+  Tv,
+  FileText,
+  FolderOpen,
+  Eye,
+  Upload,
+  Zap
 } from 'lucide-react';
+import { uploadAndProcessPdfFile } from '../utils/pdfStorageService';
 
 interface YouTubeVaultViewProps {
   subjects: SubjectMeta[];
   activeSubjectId: string;
   videos: VideoResource[];
+  pdfs?: PdfResource[];
   isViewActive?: boolean;
   onAddVideo: (video: VideoResource) => void;
   onUpdateVideoNotes: (id: string, notes: string) => void;
   onToggleVideoWatched: (id: string) => void;
   onDeleteVideo: (id: string) => void;
+  onAddPdf?: (pdf: PdfResource) => void;
+  onDeletePdf?: (id: string) => void;
+  onUpdatePdf?: (pdf: PdfResource) => void;
+  onOpenPdfInReader?: (pdf: PdfResource) => void;
   onShowToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
 
@@ -31,14 +42,21 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
   subjects,
   activeSubjectId,
   videos,
+  pdfs = [],
   isViewActive = true,
   onAddVideo,
   onUpdateVideoNotes,
   onToggleVideoWatched,
   onDeleteVideo,
+  onAddPdf,
+  onDeletePdf,
+  onUpdatePdf,
+  onOpenPdfInReader,
   onShowToast
 }) => {
+  const [vaultTab, setVaultTab] = useState<'videos' | 'pdfs'>('videos');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all');
+  const [isUploadingPdf, setIsUploadingPdf] = useState<boolean>(false);
   const [activePlayingId, setActivePlayingId] = useState<string>(() => {
     const saved = storageService.getVaultActiveVideoId();
     if (saved && videos.some(v => v.id === saved || v.videoId === saved)) {
@@ -180,29 +198,332 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
     onShowToast('Added sample timestamp to notes! Click it to test seeking.', 'info');
   };
 
+  const handleVaultPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingPdf(true);
+    try {
+      const targetSub = selectedSubjectId !== 'all' ? selectedSubjectId : (subjects[0]?.id || 'os');
+      const { pdfResource } = await uploadAndProcessPdfFile(
+        file,
+        targetSub,
+        undefined,
+        undefined,
+        subjects.find(s => s.id === targetSub)?.name
+      );
+      if (onAddPdf) {
+        onAddPdf(pdfResource);
+      }
+      onShowToast(`Uploaded and permanently stored "${file.name}" in IndexedDB! 📄`, 'success');
+    } catch (err) {
+      console.error('Error uploading PDF in vault:', err);
+      onShowToast('Could not upload PDF.', 'error');
+    } finally {
+      setIsUploadingPdf(false);
+    }
+  };
+
+  // Filtered PDFs for PDF tab
+  const filteredPdfs = selectedSubjectId === 'all'
+    ? pdfs
+    : pdfs.filter(p => p.subjectId === selectedSubjectId);
+
+  const unassignedVaultPdfs = filteredPdfs.filter(p => {
+    const sub = subjects.find(s => s.id === p.subjectId);
+    return !p.unitId || !sub?.units?.some(u => u.id === p.unitId || u.unit === p.unit);
+  });
+
   return (
     <div className="space-y-6 animate-fade-slide-up pb-16">
       
-      {/* Top Header */}
+      {/* Top Header & Tab Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-paper-ink dark:text-night-text flex items-center gap-2">
-            <Video className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
-            <span>YouTube Lecture Vault & Timestamps</span>
-          </h2>
-          <p className="text-xs text-paper-muted dark:text-night-muted mt-0.5">
-            Embedded YouTube player with auto-saved positions, clickable timestamp notes, and picture-in-picture.
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-paper-ink dark:text-night-text flex items-center gap-2">
+              <Video className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+              <span>Academic Resource Vault</span>
+            </h2>
+          </div>
+          <p className="text-xs text-paper-muted dark:text-night-muted">
+            All your video lectures, timestamps, paperclipped PDFs, and chapter revision dossiers in one unified vault.
           </p>
         </div>
 
-        <button
-          onClick={() => setIsAddOpen(true)}
-          className="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white flex items-center gap-1.5 btn-tactile shadow-sm self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ Add YouTube Lecture</span>
-        </button>
+        {/* Tab Switcher & Quick Upload */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center p-1 rounded-xl bg-stone-200/80 dark:bg-stone-900 border border-stone-300 dark:border-stone-800">
+            <button
+              type="button"
+              onClick={() => setVaultTab('videos')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all ${
+                vaultTab === 'videos'
+                  ? 'bg-amber-500 text-stone-950 shadow-sm font-extrabold'
+                  : 'text-stone-600 dark:text-stone-300 hover:text-stone-950'
+              }`}
+            >
+              <Video className="w-3.5 h-3.5" />
+              <span>Videos ({videos.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setVaultTab('pdfs')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all ${
+                vaultTab === 'pdfs'
+                  ? 'bg-amber-500 text-stone-950 shadow-sm font-extrabold'
+                  : 'text-stone-600 dark:text-stone-300 hover:text-stone-950'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Chapter PDFs ({pdfs.length})</span>
+            </button>
+          </div>
+
+          {vaultTab === 'videos' ? (
+            <button
+              onClick={() => setIsAddOpen(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 text-stone-950 hover:bg-amber-400 flex items-center gap-1.5 btn-tactile shadow-sm active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Add Video</span>
+            </button>
+          ) : (
+            <label className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 text-stone-950 hover:bg-amber-400 flex items-center gap-1.5 cursor-pointer btn-tactile shadow-sm active:scale-95">
+              <Upload className="w-4 h-4" />
+              <span>{isUploadingPdf ? 'Storing...' : '+ Upload PDF'}</span>
+              <input 
+                type="file" 
+                accept=".pdf,application/pdf" 
+                onChange={handleVaultPdfUpload}
+                disabled={isUploadingPdf}
+                className="hidden" 
+              />
+            </label>
+          )}
+        </div>
       </div>
+
+      {/* =========================================================================
+          TAB 2: CHAPTER PDFS & REVISION DOSSIERS VAULT
+          ========================================================================= */}
+      {vaultTab === 'pdfs' && (
+        <div className="space-y-6">
+          {/* Subject Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            <button
+              onClick={() => setSelectedSubjectId('all')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all shrink-0 ${
+                selectedSubjectId === 'all'
+                  ? 'bg-amber-500 text-stone-950 border-amber-500 font-extrabold shadow-sm'
+                  : 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-transparent hover:border-stone-400'
+              }`}
+            >
+              All Subjects ({pdfs.length})
+            </button>
+            {subjects.map(s => {
+              const count = pdfs.filter(p => p.subjectId === s.id).length;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedSubjectId(s.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all shrink-0 flex items-center gap-1.5 ${
+                    selectedSubjectId === s.id
+                      ? 'bg-amber-500 text-stone-950 border-amber-500 font-extrabold shadow-sm'
+                      : 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-transparent hover:border-stone-400'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.accentColor }} />
+                  <span>{s.name} ({count})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 📂 Prominent Unassigned PDFs Tray */}
+          {unassignedVaultPdfs.length > 0 && (
+            <div className="p-4 sm:p-5 rounded-2xl border-2 border-dashed border-amber-500/50 bg-amber-500/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-black uppercase text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                  <FolderOpen className="w-4 h-4 text-amber-500" />
+                  <span>📂 Uploaded Subject PDFs (Assign to a Chapter) ({unassignedVaultPdfs.length})</span>
+                </span>
+                <span className="text-[11px] font-mono opacity-70">
+                  Select a chapter below to place document under its bold heading
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {unassignedVaultPdfs.map(pdf => {
+                  const sub = subjects.find(s => s.id === pdf.subjectId);
+                  return (
+                    <div 
+                      key={pdf.id}
+                      className="p-3.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-800 flex items-center justify-between gap-3 shadow-xs"
+                    >
+                      <div className="space-y-1 overflow-hidden">
+                        <div className="text-xs sm:text-sm font-bold font-serif line-clamp-1">
+                          📄 {pdf.fileName}
+                        </div>
+                        <div className="text-[11px] font-mono opacity-60">
+                          {sub?.name || pdf.subjectId} • {pdf.fileSize} • Uploaded {pdf.uploadDate}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {onOpenPdfInReader && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenPdfInReader(pdf)}
+                            className="px-2.5 py-1 rounded bg-amber-500 text-stone-950 font-bold text-xs flex items-center gap-1"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Read</span>
+                          </button>
+                        )}
+
+                        {/* 📌 Move to Chapter Dropdown */}
+                        <select
+                          onChange={(e) => {
+                            if (e.target.value && onUpdatePdf) {
+                              const targetUnit = sub?.units?.find(u => u.id === e.target.value);
+                              onUpdatePdf({
+                                ...pdf,
+                                unitId: e.target.value,
+                                unit: targetUnit?.unit
+                              });
+                              onShowToast(`Assigned "${pdf.fileName}" to ${targetUnit?.title || 'Chapter'}! 📌`, 'success');
+                            }
+                          }}
+                          defaultValue=""
+                          className="text-xs font-mono font-bold px-2 py-1 rounded bg-stone-200 dark:bg-stone-800 border border-stone-300 dark:border-stone-700"
+                        >
+                          <option value="" disabled>📌 Move to Chapter ▾</option>
+                          {sub?.units?.map((u, i) => (
+                            <option key={u.id} value={u.id}>
+                              Ch {i + 1}: {u.title.slice(0, 20)}...
+                            </option>
+                          ))}
+                        </select>
+
+                        {onDeletePdf && (
+                          <button
+                            type="button"
+                            onClick={() => onDeletePdf(pdf.id)}
+                            className="p-1.5 text-stone-400 hover:text-red-500"
+                            title="Delete PDF"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* All Filtered PDFs Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredPdfs.map(pdf => {
+              const sub = subjects.find(s => s.id === pdf.subjectId);
+              const unit = sub?.units?.find(u => u.id === pdf.unitId || u.unit === pdf.unit);
+
+              return (
+                <div 
+                  key={pdf.id}
+                  className="p-4 sm:p-5 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border hover:border-amber-500/50 shadow-sm transition-all flex flex-col justify-between space-y-3"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                          <FileText className="w-4 h-4" />
+                        </span>
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-bold text-paper-ink dark:text-night-text line-clamp-1">
+                            {pdf.fileName}
+                          </h4>
+                          <span className="text-[10px] font-mono opacity-60">
+                            {sub?.name || pdf.subjectId} • {unit ? unit.title : 'Unassigned to Chapter'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {onDeletePdf && (
+                        <button
+                          type="button"
+                          onClick={() => onDeletePdf(pdf.id)}
+                          className="p-1 text-stone-400 hover:text-red-500"
+                          title="Delete PDF"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-3 bg-stone-100 dark:bg-stone-900/80 p-2.5 rounded-xl border border-stone-200 dark:border-stone-800 font-serif">
+                      {pdf.summary || pdf.extractedText || 'Chapter notes & syllabus concepts extracted from PDF.'}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between">
+                    {/* 📌 Move to Chapter Dropdown */}
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value && onUpdatePdf) {
+                          const targetUnit = sub?.units?.find(u => u.id === e.target.value);
+                          onUpdatePdf({
+                            ...pdf,
+                            unitId: e.target.value,
+                            unit: targetUnit?.unit
+                          });
+                          onShowToast(`Moved "${pdf.fileName}" to ${targetUnit?.title || 'Chapter'}! 📌`, 'success');
+                        }
+                      }}
+                      value={pdf.unitId || ''}
+                      className="text-[10px] font-mono font-bold px-2 py-1 rounded bg-stone-200 dark:bg-stone-800 border border-stone-300 dark:border-stone-700"
+                    >
+                      <option value="" disabled>📌 Move to Chapter ▾</option>
+                      {sub?.units?.map((u, i) => (
+                        <option key={u.id} value={u.id}>
+                          Ch {i + 1}: {u.title.slice(0, 16)}...
+                        </option>
+                      ))}
+                    </select>
+
+                    {onOpenPdfInReader && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenPdfInReader(pdf)}
+                        className="px-3 py-1 rounded bg-amber-500 text-stone-950 font-bold text-xs flex items-center gap-1 active:scale-95 shadow-xs"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Read in Book</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {filteredPdfs.length === 0 && (
+            <div className="p-12 text-center rounded-3xl bg-paper-card dark:bg-night-card border border-dashed border-paper-border dark:border-night-border text-paper-muted space-y-2">
+              <FileText className="w-8 h-8 mx-auto opacity-50 text-amber-500" />
+              <h4 className="text-sm font-bold text-paper-ink dark:text-night-text">No PDFs uploaded in this subject yet</h4>
+              <p className="text-xs">Upload lecture notes, textbook chapters, or university past papers to start reading.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB 1: VIDEO LECTURES VAULT
+          ========================================================================= */}
+      {vaultTab === 'videos' && (
+        <>
 
       {/* 1. DEDICATED ACTIVE PLAYER THEATRE (Created once, never destroyed by timers or list redraws) */}
       {activeVideo && (
@@ -500,6 +821,8 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
           <h4 className="text-sm font-bold text-paper-ink dark:text-night-text">No lectures saved in this subject</h4>
           <p className="text-xs">Click "+ Add YouTube Lecture" above to save crash courses or revision videos.</p>
         </div>
+      )}
+      </>
       )}
 
       {/* ADD LECTURE MODAL */}

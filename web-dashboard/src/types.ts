@@ -143,6 +143,12 @@ export interface PdfResource {
   extractedQuestions?: string[];
   unitId?: string; // Links PDF to a specific SubjectUnit
   unit?: number;
+  dataUrl?: string;
+  pageCount?: number;
+  hasBinary?: boolean;
+  summaryPoints?: string[];
+  lastReadPage?: number;
+  isRead?: boolean;
 }
 
 export interface ConceptExplainer {

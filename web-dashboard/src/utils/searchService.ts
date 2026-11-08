@@ -298,7 +298,8 @@ export function buildSearchIndex(
       const sub = subjectMap.get(pdf.subjectId);
       const unit = sub?.units?.find(u => u.id === pdf.unitId || u.unit === pdf.unit);
       const unitLabel = unit ? formatUnitDisplayName(unit) : (pdf.unit ? `Unit ${pdf.unit}` : undefined);
-      const text = `${pdf.fileName} ${pdf.summary || ''} ${pdf.extractedText || ''}`;
+      const summaryPts = Array.isArray(pdf.summaryPoints) ? pdf.summaryPoints.join(' ') : '';
+      const text = `${pdf.fileName} ${pdf.summary || ''} ${summaryPts} ${pdf.extractedText || ''}`;
 
       items.push({
         id: `pdf-${exam.id}-${pdf.id}`,

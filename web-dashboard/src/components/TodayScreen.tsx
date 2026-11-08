@@ -6,7 +6,8 @@ import {
   StudyTask, 
   Flashcard, 
   PomodoroSession,
-  VideoResource
+  VideoResource,
+  PdfResource
 } from '../types';
 import { 
   getExamUrgencyColor, 
@@ -33,7 +34,8 @@ import {
   ArrowUpDown,
   ShieldCheck,
   CheckCircle2,
-  FolderOpen
+  FolderOpen,
+  Zap
 } from 'lucide-react';
 
 interface TodayScreenProps {
@@ -44,6 +46,7 @@ interface TodayScreenProps {
   flashcards: Flashcard[];
   pomodoroLogs: PomodoroSession[];
   videos?: VideoResource[];
+  pdfs?: PdfResource[];
   onToggleTopicCompleted: (topicId: string) => void;
   onSelectSubject: (subjectId: string, unitId?: string) => void;
   onNavigateView: (view: any) => void;
@@ -62,6 +65,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   flashcards,
   pomodoroLogs,
   videos = [],
+  pdfs = [],
   onToggleTopicCompleted,
   onSelectSubject,
   onNavigateView,
@@ -110,6 +114,127 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
       return u.hasDate && u.fractionalDays > 0;
     });
   }, [subjects]);
+
+  // Today's Smart 3-Step Study Queue (Top 3 most urgent study tasks across all books)
+  const priorityMissions = useMemo(() => {
+    const missions: Array<{
+      stepNumber: string;
+      subjectId: string;
+      subjectName: string;
+      accentColor: string;
+      unitId?: string;
+      unitTitle: string;
+      title: string;
+      reason: string;
+      badge: string;
+      actionText: string;
+    }> = [];
+
+    if (displaySubjects.length === 0) return missions;
+
+    // Mission 1: Nearest Exam Subject with Weakest Topics
+    const urgentSub = displaySubjects[0];
+    const urgentTopics = topics.filter(t => t.subjectId === urgentSub.id);
+    const urgentUnits = urgentSub.units || [];
+    
+    let bestUnit1: { unitId?: string; title: string; weakCount: number } = {
+      unitId: urgentUnits[0]?.id,
+      title: urgentUnits[0]?.title || 'Core Chapter 1',
+      weakCount: 0
+    };
+
+    urgentUnits.forEach(u => {
+      const uTopics = urgentTopics.filter(t => t.unitId === u.id || t.unitNumber === u.unit);
+      const weak = uTopics.filter(t => t.mastery === 'weak' || !t.completed).length;
+      if (weak >= bestUnit1.weakCount) {
+        bestUnit1 = { unitId: u.id, title: u.title, weakCount: weak };
+      }
+    });
+
+    const urgentDays = urgentSub.examDate ? Math.max(0, Math.ceil((new Date(urgentSub.examDate).getTime() - Date.now()) / (1000 * 3600 * 24))) : null;
+    const daysLabel = urgentDays !== null ? `Exam in ${urgentDays}d` : 'Target Exam';
+
+    missions.push({
+      stepNumber: '01',
+      subjectId: urgentSub.id,
+      subjectName: urgentSub.name,
+      accentColor: urgentSub.accentColor,
+      unitId: bestUnit1.unitId,
+      unitTitle: bestUnit1.title,
+      title: `${urgentSub.name} • ${bestUnit1.title}`,
+      reason: `${bestUnit1.weakCount > 0 ? `${bestUnit1.weakCount} Weak Topics` : 'High Priority'} • ${daysLabel}`,
+      badge: '🚨 Exam Proximity',
+      actionText: 'Study Chapter →'
+    });
+
+    // Mission 2: High-Probability PYQ Practice or Second Subject
+    const highProbQuestions = questions.filter(q => q.isHighProbability && q.userStatus !== 'mastered');
+    const targetQ = highProbQuestions[0] || questions.find(q => q.userStatus !== 'mastered');
+
+    if (targetQ) {
+      const qSub = subjects.find(s => s.id === targetQ.subjectId) || urgentSub;
+      missions.push({
+        stepNumber: '02',
+        subjectId: qSub.id,
+        subjectName: qSub.name,
+        accentColor: qSub.accentColor,
+        unitId: targetQ.unitId,
+        unitTitle: targetQ.unitTitle || 'University PYQs',
+        title: `University PYQ: ${targetQ.question.slice(0, 42)}...`,
+        reason: `${targetQ.marks} Marks • Asked ${targetQ.repeatCount}x in Exams`,
+        badge: '🔥 Repeat PYQ',
+        actionText: 'Practice PYQs →'
+      });
+    } else {
+      const secondSub = displaySubjects[1] || displaySubjects[0];
+      missions.push({
+        stepNumber: '02',
+        subjectId: secondSub.id,
+        subjectName: secondSub.name,
+        accentColor: secondSub.accentColor,
+        unitId: secondSub.units?.[0]?.id,
+        unitTitle: secondSub.units?.[0]?.title || 'Chapter 1',
+        title: `${secondSub.name} Core Revision`,
+        reason: 'Master standard definitions & rubric keywords',
+        badge: '🔥 Core Revision',
+        actionText: 'Open Chapter →'
+      });
+    }
+
+    // Mission 3: Uploaded PDF Dossier or Flashcard Sprint
+    const unreadPdf = (pdfs || []).find(p => !p.isRead) || (pdfs || [])[0];
+    if (unreadPdf) {
+      const pdfSub = subjects.find(s => s.id === unreadPdf.subjectId) || urgentSub;
+      missions.push({
+        stepNumber: '03',
+        subjectId: pdfSub.id,
+        subjectName: pdfSub.name,
+        accentColor: pdfSub.accentColor,
+        unitId: unreadPdf.unitId,
+        unitTitle: unreadPdf.fileName,
+        title: `Dossier: ${unreadPdf.fileName}`,
+        reason: `${unreadPdf.fileSize} • 5 Key Exam Points & Revision Notes`,
+        badge: '📄 Chapter PDF',
+        actionText: 'Read PDF →'
+      });
+    } else {
+      const thirdSub = displaySubjects[2] || displaySubjects[0];
+      missions.push({
+        stepNumber: '03',
+        subjectId: thirdSub.id,
+        subjectName: thirdSub.name,
+        accentColor: thirdSub.accentColor,
+        unitId: thirdSub.units?.[1]?.id || thirdSub.units?.[0]?.id,
+        unitTitle: thirdSub.units?.[1]?.title || 'Chapter 2',
+        title: 'Active Recall Flashcard Sprint',
+        reason: `${dueFlashcards.length} Cards Due for Review Today`,
+        badge: '🃏 Flashcards',
+        actionText: 'Review Cards →'
+      });
+    }
+
+    return missions.slice(0, 3);
+  }, [displaySubjects, topics, questions, pdfs, subjects, dueFlashcards.length]);
 
   // Handle color update directly on book
   const handleUpdateSubjectColor = (subjectId: string, colorHex: string) => {
@@ -241,6 +366,71 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ⚡ TODAY'S SMART 3-STEP STUDY QUEUE STRIP */}
+      {priorityMissions.length > 0 && (
+        <div 
+          className="w-full rounded-2xl p-4 sm:p-5 border shadow-md transition-colors space-y-3"
+          style={{
+            backgroundColor: isLight ? '#FAF7F0' : '#10131A',
+            borderColor: isLight ? '#DCD7CE' : '#222733'
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-amber-500 text-stone-950 font-bold flex items-center justify-center">
+                <Zap className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-xs font-mono font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                Today's Priority Study Queue
+              </span>
+              <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                High-Impact Exam Crunch
+              </span>
+            </div>
+            <span className="text-[11px] font-mono opacity-60">
+              3 Targeted Missions
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {priorityMissions.map((mission) => (
+              <div 
+                key={mission.stepNumber}
+                onClick={() => onSelectSubject(mission.subjectId, mission.unitId)}
+                className="p-3.5 rounded-xl border cursor-pointer hover:border-amber-500 transition-all shadow-xs flex flex-col justify-between gap-3 group bg-stone-100/90 dark:bg-stone-900/90 border-stone-300 dark:border-stone-800"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                      STEP {mission.stepNumber}
+                    </span>
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
+                      {mission.badge}
+                    </span>
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 line-clamp-1 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                    {mission.title}
+                  </div>
+                  <div className="text-[11px] text-stone-500 dark:text-stone-400 line-clamp-1 font-mono">
+                    {mission.reason}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-stone-200 dark:border-stone-800/80 text-xs font-bold text-amber-600 dark:text-amber-400">
+                  <span className="text-[11px] font-mono flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: mission.accentColor }} />
+                    {mission.subjectName}
+                  </span>
+                  <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform text-[11px]">
+                    {mission.actionText}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 2. THE 3D BOOKSHELF / DESK CONTROLS */}
       <div className="w-full flex items-center justify-between gap-3 px-1">

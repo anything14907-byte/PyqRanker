@@ -74,3 +74,4 @@ export const StudioLampSwitch: React.FC = () => {
     </>
   );
 };
+

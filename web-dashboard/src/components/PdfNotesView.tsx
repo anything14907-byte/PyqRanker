@@ -54,7 +54,8 @@ import {
   Settings,
   ShieldAlert,
   EyeOff,
-  Lock
+  Lock,
+  FolderOpen
 } from 'lucide-react';
 
 interface PdfNotesViewProps {
@@ -63,6 +64,7 @@ interface PdfNotesViewProps {
   topics?: SyllabusTopic[];
   pdfs: PdfResource[];
   onAddPdf: (pdf: PdfResource) => void;
+  onUpdatePdf?: (pdf: PdfResource) => void;
   onDeletePdf: (id: string) => void;
   onAddQuestion: (q: PYQQuestion) => void;
   onAddFlashcard: (card: Flashcard) => void;
@@ -76,6 +78,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
   topics = [],
   pdfs,
   onAddPdf,
+  onUpdatePdf,
   onDeletePdf,
   onAddQuestion,
   onAddFlashcard,
@@ -1217,9 +1220,56 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
           </select>
         </div>
 
+        {/* 📂 Prominent Tray for Unassigned Subject PDFs */}
+        {subjectPdfs.some(p => !p.unitId) && (
+          <div className="p-4 rounded-2xl border-2 border-dashed border-amber-500/50 bg-amber-500/10 space-y-2.5 mb-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-black uppercase text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-amber-500" />
+                <span>📂 Uploaded Subject PDFs (Assign to a Chapter)</span>
+              </span>
+              <span className="text-[10px] font-mono opacity-70">
+                Select chapter dropdown to link document
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {subjectPdfs.filter(p => !p.unitId).map(pdf => {
+                const sub = subjects.find(s => s.id === pdf.subjectId);
+                return (
+                  <div key={pdf.id} className="p-3 rounded-xl bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-800 flex items-center justify-between gap-2 text-xs">
+                    <span className="font-serif font-bold line-clamp-1">📄 {pdf.fileName}</span>
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value && onUpdatePdf) {
+                          const targetUnit = sub?.units?.find(u => u.id === e.target.value);
+                          onUpdatePdf({
+                            ...pdf,
+                            unitId: e.target.value,
+                            unit: targetUnit?.unit
+                          });
+                          onShowToast(`Moved "${pdf.fileName}" to ${targetUnit?.title || 'Chapter'}! 📌`, 'success');
+                        }
+                      }}
+                      defaultValue=""
+                      className="text-[10px] font-mono font-bold px-2 py-1 rounded bg-stone-200 dark:bg-stone-800 border"
+                    >
+                      <option value="" disabled>📌 Move to Chapter ▾</option>
+                      {sub?.units?.map((u, i) => (
+                        <option key={u.id} value={u.id}>Ch {i + 1}: {u.title.slice(0, 16)}...</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {subjectPdfs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-            {subjectPdfs.map(pdf => (
+            {subjectPdfs.map(pdf => {
+              const sub = subjects.find(s => s.id === pdf.subjectId);
+              return (
               <div 
                 key={pdf.id}
                 className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border flex flex-col justify-between gap-3 hover:border-emerald-500/40 transition-all"
@@ -1230,7 +1280,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
                       {pdf.fileName}
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-paper-border/60 text-paper-muted shrink-0">
-                      Unit {pdf.unit}
+                      Unit {pdf.unit || '1'}
                     </span>
                   </div>
                   <p className="text-[11px] text-paper-muted dark:text-night-muted line-clamp-2 leading-relaxed">
@@ -1241,6 +1291,28 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
                 <div className="flex items-center justify-between pt-2 border-t border-paper-border/50 text-[11px] font-mono text-paper-muted">
                   <span>{pdf.uploadDate}</span>
                   <div className="flex items-center gap-2">
+                    {/* 📌 Move to Chapter Dropdown */}
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value && onUpdatePdf) {
+                          const targetUnit = sub?.units?.find(u => u.id === e.target.value);
+                          onUpdatePdf({
+                            ...pdf,
+                            unitId: e.target.value,
+                            unit: targetUnit?.unit
+                          });
+                          onShowToast(`Moved "${pdf.fileName}" to ${targetUnit?.title || 'Chapter'}! 📌`, 'success');
+                        }
+                      }}
+                      value={pdf.unitId || ''}
+                      className="text-[10px] font-mono font-bold px-1.5 py-1 rounded bg-stone-200 dark:bg-stone-800 border border-stone-300 dark:border-stone-700"
+                    >
+                      <option value="" disabled>📌 Move to Chapter ▾</option>
+                      {sub?.units?.map((u, i) => (
+                        <option key={u.id} value={u.id}>Ch {i + 1}: {u.title.slice(0, 16)}...</option>
+                      ))}
+                    </select>
+
                     <button
                       onClick={() => setViewingPdf(pdf)}
                       className="p-1.5 rounded-lg hover:bg-paper-card text-emerald-600 hover:text-emerald-700"
@@ -1258,7 +1330,8 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-8 text-xs text-paper-muted italic">

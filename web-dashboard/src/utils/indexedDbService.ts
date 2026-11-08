@@ -2,7 +2,7 @@ import { SubjectMeta, SubjectFile, FileCategory, SubjectNote, VideoResource, Hub
 import { storageService, DEFAULT_SUBJECTS } from './storageService';
 
 const DB_NAME = 'PyqRankerHubDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbInstance: IDBDatabase | null = null;
 
@@ -39,6 +39,11 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('videos')) {
         const videoStore = db.createObjectStore('videos', { keyPath: 'id' });
         videoStore.createIndex('subjectId', 'subjectId', { unique: false });
+      }
+
+      // 5. StudyOS Permanent PDF Binary Store (No more expired blob URLs)
+      if (!db.objectStoreNames.contains('StudyOS_PDF_Blobs')) {
+        db.createObjectStore('StudyOS_PDF_Blobs', { keyPath: 'id' });
       }
     };
 
@@ -926,5 +931,57 @@ export const indexedDbService = {
         message: `Error importing backup: ${err.message || 'Corrupted file'}`
       };
     }
+  },
+
+  // ==========================================
+  // STUDYOS PDF BLOBS CRUD (Permanent Binary PDF Storage)
+  // ==========================================
+  async savePdfBlob(id: string, payload: { blob?: Blob; arrayBuffer?: ArrayBuffer; dataUrl?: string; fileName?: string; extractedText?: string }): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('StudyOS_PDF_Blobs', 'readwrite');
+      const store = tx.objectStore('StudyOS_PDF_Blobs');
+      const record = {
+        id,
+        ...payload,
+        updatedAt: Date.now()
+      };
+      const req = store.put(record);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async getPdfBlob(id: string): Promise<{ id: string; blob?: Blob; arrayBuffer?: ArrayBuffer; dataUrl?: string; fileName?: string; extractedText?: string } | null> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('StudyOS_PDF_Blobs', 'readonly');
+      const store = tx.objectStore('StudyOS_PDF_Blobs');
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async deletePdfBlob(id: string): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('StudyOS_PDF_Blobs', 'readwrite');
+      const store = tx.objectStore('StudyOS_PDF_Blobs');
+      const req = store.delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async getAllPdfBlobs(): Promise<any[]> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('StudyOS_PDF_Blobs', 'readonly');
+      const store = tx.objectStore('StudyOS_PDF_Blobs');
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
   }
 };
