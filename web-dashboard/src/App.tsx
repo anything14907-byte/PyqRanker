@@ -30,7 +30,6 @@ import { Toast, ToastMessage } from './components/Toast';
 import { SearchIndexItem } from './utils/searchService';
 import { CommandSubHeader } from './components/CommandSubHeader';
 import { InstallAppModal } from './components/InstallAppModal';
-import { HangingBulbToggle } from './components/HangingBulbToggle';
 import { OpenBookBinder } from './components/OpenBookBinder';
 import confetti from 'canvas-confetti';
 import { Sparkles } from 'lucide-react';
@@ -648,17 +647,12 @@ function DashboardContent() {
 
   return (
     <div className="relative min-h-screen w-full bg-[#E5DFD3] dark:bg-[#0C0E12] text-paper-ink dark:text-night-text transition-colors duration-200">
-      {/* 💡 Signature Hanging Light Bulb & Volumetric Spotlight Theme Switcher */}
-      <HangingBulbToggle />
-      
       <div className="relative z-10 w-full min-h-screen">
         {/* ROW 1: Studio Hardcover Navigation Bar */}
         <Navbar
           currentView={currentView}
           onSelectView={handleSelectView}
           onOpenBackup={() => setIsBackupModalOpen(true)}
-          onFastExport={handleFastExport}
-          onFastImport={handleFastImport}
           onOpenAddSubject={() => setIsAddSubjectOpen(true)}
           onOpenInstallApp={() => setIsInstallModalOpen(true)}
         />

@@ -58,7 +58,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   ];
 
   const moreTabs: { id: ExtendedNavView; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: 'pdf', label: 'PDF Notes Tool', icon: <FileText className="w-5 h-5" /> },
     { id: 'overview', label: 'All Subjects Grid', icon: <Layers className="w-5 h-5" /> },
   ];
 
@@ -122,9 +121,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               {onOpenInstallApp && (
                 <button
                   onClick={() => { setIsMoreOpen(false); onOpenInstallApp(); }}
-                  className="p-3.5 rounded-2xl bg-indigo-500/15 border border-indigo-500/40 text-indigo-400 font-bold text-xs flex items-center justify-center gap-2 btn-tactile min-h-[44px]"
+                  className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-500 font-bold text-xs flex items-center justify-center gap-2 btn-tactile min-h-[44px]"
                 >
-                  <Download className="w-4 h-4 text-indigo-400" />
+                  <Download className="w-4 h-4 text-amber-500" />
                   <span>Download App</span>
                 </button>
               )}
@@ -167,11 +166,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   onClick={() => setThemeMode('pro-cyber')}
                   className={`py-2.5 px-2 rounded-xl text-xs font-bold border flex flex-col items-center justify-center gap-1 min-h-[44px] transition-all ${
                     themeMode === 'pro-cyber'
-                      ? 'bg-indigo-500/20 border-indigo-400 text-indigo-400 shadow-sm'
+                      ? 'bg-emerald-500/20 border-emerald-400 text-emerald-400 shadow-sm'
                       : 'bg-paper-cardElevated dark:bg-white/5 border-paper-border dark:border-white/10 text-paper-muted dark:text-gray-400'
                   }`}
                 >
-                  <Zap className="w-4 h-4 text-indigo-400" />
+                  <Zap className="w-4 h-4 text-emerald-400" />
                   <span className="text-[11px]">Pro Cyber</span>
                 </button>
               </div>

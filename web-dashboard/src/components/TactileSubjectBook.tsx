@@ -7,10 +7,8 @@ import {
   Calendar, 
   Edit3, 
   Layers, 
-  CheckCircle2, 
   ChevronRight, 
-  Palette,
-  Clock
+  Palette
 } from 'lucide-react';
 import { formatUnitDisplayName } from '../utils/storageService';
 
@@ -34,6 +32,7 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
   onUpdateSubjectColor
 }) => {
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
   const cloth = getBookClothColor(subject.accentColor);
 
   // Subject topics & mastery counts
@@ -51,10 +50,20 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
   // Subject Units mapped as Chapters
   const units = subject.units || [];
 
+  const handleBookClick = (unitId?: string) => {
+    if (isOpening) return;
+    setIsOpening(true);
+    // Smooth 60fps opening sequence before switching view
+    setTimeout(() => {
+      onOpenBook(subject.id, unitId);
+      setIsOpening(false);
+    }, 420);
+  };
+
   return (
     <div 
-      className="relative group select-none transition-all duration-300 w-full flex flex-col justify-end"
-      style={{ perspective: '1200px' }}
+      className="relative group select-none w-full flex flex-col justify-end"
+      style={{ perspective: '1600px' }}
     >
       {/* Physical Hanging Ribbon Bookmark protruding from TOP */}
       <div 
@@ -63,7 +72,7 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
           onEditExamDate(subject);
         }}
         className="absolute -top-3.5 left-8 z-30 cursor-pointer transition-transform hover:-translate-y-1 active:translate-y-0.5 group/ribbon"
-        title="Click to change exam date"
+        title="Click to change exam target date"
       >
         <div 
           className="relative px-3 py-1 text-[11px] font-mono font-extrabold flex items-center gap-1.5 shadow-md rounded-t-sm"
@@ -82,75 +91,80 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
         />
       </div>
 
-      {/* 3D BOOK BODY WRAPPER */}
+      {/* 3D HARDCOVER BOOK BODY (Stripe Press Craftsmanship) */}
       <div 
-        className="relative w-full rounded-r-2xl rounded-l-md transition-transform duration-500 ease-out cursor-pointer flex"
+        className={`relative w-full rounded-r-2xl rounded-l-md cursor-pointer flex transition-all duration-500 ease-out ${
+          isOpening ? 'scale-105 -translate-y-3' : 'hover:-translate-y-1.5'
+        }`}
         style={{
           transformStyle: 'preserve-3d',
-          minHeight: '340px',
-          boxShadow: '10px 18px 30px -8px rgba(0, 0, 0, 0.45), 2px 4px 8px rgba(0, 0, 0, 0.25)'
+          minHeight: '345px',
+          boxShadow: '12px 22px 35px -8px rgba(0, 0, 0, 0.5), 2px 4px 8px rgba(0, 0, 0, 0.3)'
         }}
-        onClick={() => onOpenBook(subject.id)}
+        onClick={() => handleBookClick()}
       >
-        {/* Embossed Book Spine (Left Edge) */}
+        {/* Embossed Book Spine & Recessed Spine Groove (Left Edge) */}
         <div 
-          className="w-7 sm:w-8 shrink-0 rounded-l-md flex flex-col items-center justify-between py-6 border-r border-black/30 shadow-inner relative z-10"
+          className="w-7 sm:w-8 shrink-0 rounded-l-md flex flex-col items-center justify-between py-6 border-r border-black/40 relative z-10"
           style={{
             backgroundColor: cloth.spineHex,
-            backgroundImage: 'linear-gradient(to right, rgba(0,0,0,0.5) 0%, transparent 40%, rgba(255,255,255,0.12) 80%, rgba(0,0,0,0.3) 100%)'
+            backgroundImage: 'linear-gradient(to right, rgba(0,0,0,0.6) 0%, transparent 35%, rgba(255,255,255,0.15) 75%, rgba(0,0,0,0.35) 100%)',
+            boxShadow: 'inset 6px 0 12px rgba(0,0,0,0.45)'
           }}
         >
-          {/* Top Foil Brand Stamped on Spine */}
+          {/* Top Foil Stamped Volume Number */}
           <span 
-            className="text-[9px] font-mono font-bold tracking-widest uppercase opacity-75 writing-mode-vertical rotate-180"
+            className="text-[9px] font-mono font-bold tracking-widest uppercase opacity-80 writing-mode-vertical rotate-180"
             style={{ color: cloth.foilColor }}
           >
             {volumeNumber}
           </span>
 
-          {/* Spine Ribs (Decorative raised bands) */}
+          {/* Raised Spine Bands */}
           <div className="flex flex-col gap-8 w-full px-1">
-            <div className="h-[2px] bg-black/40 shadow-xs" />
-            <div className="h-[2px] bg-black/40 shadow-xs" />
-            <div className="h-[2px] bg-black/40 shadow-xs" />
+            <div className="h-[2px] bg-black/50 shadow-xs" />
+            <div className="h-[2px] bg-black/50 shadow-xs" />
+            <div className="h-[2px] bg-black/50 shadow-xs" />
           </div>
 
-          {/* Bottom Code */}
+          {/* Bottom Subject Code */}
           <span 
             className="text-[10px] font-mono font-extrabold tracking-wider writing-mode-vertical rotate-180"
             style={{ color: cloth.foilColor }}
           >
-            {subject.code || 'OS'}
+            {subject.code || 'TEXTBOOK'}
           </span>
         </div>
 
-        {/* Tactile Front Cover with 3D Open Angle on Hover */}
+        {/* Tactile Front Cover with 3D Flip Open Animation on Click/Hover */}
         <div 
-          className="flex-1 rounded-r-xl p-5 sm:p-6 flex flex-col justify-between relative z-10 transition-transform duration-500 origin-left border-y border-r border-white/10 group-hover:[transform:rotateY(-14deg)_translateY(-6px)]"
+          className="flex-1 rounded-r-xl p-5 sm:p-6 flex flex-col justify-between relative z-10 transition-transform duration-500 origin-left border-y border-r border-white/10"
           style={{
             backgroundColor: cloth.hex,
-            backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(255,255,255,0.14) 0%, transparent 60%), linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.2) 100%)',
-            boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.25), inset -2px 0 3px rgba(0,0,0,0.3)'
+            backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(255,255,255,0.15) 0%, transparent 60%), linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.22) 100%)',
+            boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.25), inset -2px 0 4px rgba(0,0,0,0.35)',
+            transform: isOpening 
+              ? 'rotateY(-45deg) translateY(-8px)' 
+              : undefined
           }}
         >
-          {/* Top Row: Volume & Quick Actions */}
+          {/* Top Row: Volume Badge & Color Trigger */}
           <div className="flex items-start justify-between gap-2 border-b border-white/15 pb-3">
             <div className="flex items-center gap-2">
               <span 
-                className="text-[11px] font-mono font-black tracking-widest uppercase px-2 py-0.5 rounded-sm bg-black/30 border border-white/10"
+                className="text-[11px] font-mono font-black tracking-widest uppercase px-2 py-0.5 rounded-sm bg-black/35 border border-white/10"
                 style={{ color: cloth.foilColor }}
               >
                 {volumeNumber}
               </span>
               {subject.code && (
-                <span className="text-[11px] font-mono font-bold text-white/70">
+                <span className="text-[11px] font-mono font-bold text-white/75">
                   [{subject.code}]
                 </span>
               )}
             </div>
 
             <div className="flex items-center gap-1">
-              {/* Color Swatch Trigger */}
               <button
                 type="button"
                 onClick={(e) => {
@@ -163,7 +177,6 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
                 <Palette className="w-3.5 h-3.5" />
               </button>
 
-              {/* Edit Subject */}
               {onEditSubject && (
                 <button
                   type="button"
@@ -180,7 +193,7 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
             </div>
           </div>
 
-          {/* 10 Cloth Colors Inline Palette Picker */}
+          {/* Color Swatch Picker */}
           {showColorPicker && (
             <div 
               onClick={(e) => e.stopPropagation()}
@@ -225,24 +238,23 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
 
           {/* Bottom Row: Syllabus Mastery Breakdown & Open Book Action */}
           <div className="space-y-3 pt-3 border-t border-white/15">
-            {/* Mastery Tally Pills: Weak / Okay / Strong */}
             <div className="flex items-center justify-between text-[11px] font-mono">
               <span className="text-white/90 font-bold">{progressPct}% Mastered</span>
-              <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.2 rounded bg-red-900/60 text-red-200 border border-red-700/50" title="Weak topics">
+              <div className="flex items-center gap-1.5">
+                <span className="px-1.5 py-0.2 rounded bg-red-950/70 text-red-200 border border-red-700/50" title="Weak topics">
                   {weakCount} W
                 </span>
-                <span className="px-1.5 py-0.2 rounded bg-amber-900/60 text-amber-200 border border-amber-700/50" title="Okay topics">
+                <span className="px-1.5 py-0.2 rounded bg-amber-950/70 text-amber-200 border border-amber-700/50" title="Okay topics">
                   {okayCount} O
                 </span>
-                <span className="px-1.5 py-0.2 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-700/50" title="Strong topics">
+                <span className="px-1.5 py-0.2 rounded bg-emerald-950/70 text-emerald-200 border border-emerald-700/50" title="Strong topics">
                   {strongCount} S
                 </span>
               </div>
             </div>
 
             {/* Progress Track */}
-            <div className="w-full h-2 rounded-full bg-black/40 border border-white/10 overflow-hidden">
+            <div className="w-full h-1.5 rounded-full bg-black/40 border border-white/10 overflow-hidden">
               <div 
                 className="h-full rounded-full transition-all duration-500"
                 style={{
@@ -255,22 +267,22 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
             {/* "📖 Open Book" Action Button */}
             <button
               type="button"
-              onClick={() => onOpenBook(subject.id)}
-              className="w-full py-2.5 rounded-lg bg-black/40 hover:bg-black/60 active:scale-98 border border-white/20 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md group-hover:border-amber-400/60"
+              onClick={() => handleBookClick()}
+              className="w-full py-2.5 rounded-lg bg-black/45 hover:bg-black/65 active:scale-98 border border-white/20 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md group-hover:border-amber-400/60"
             >
               <BookOpen className="w-4 h-4 text-amber-400" />
-              <span>Open Book (Read Chapters)</span>
+              <span>{isOpening ? 'Opening Textbook...' : 'Open Book'}</span>
               <ChevronRight className="w-4 h-4 text-white/70 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
         </div>
 
-        {/* 3D Layered Cream Paper Pages Stack (Fore-Edge along Right Edge) */}
+        {/* 3D Multi-Layered Paper Block Edge (Simulating 400 Stacked Pages) */}
         <div 
           className="w-5 shrink-0 rounded-r-md border-y border-r border-stone-400/40"
           style={{
             background: 'repeating-linear-gradient(90deg, #FBF8F1, #FBF8F1 2px, #E7E5E4 2px, #E7E5E4 4px)',
-            boxShadow: 'inset 3px 0 5px rgba(0,0,0,0.25), 4px 0 8px rgba(0,0,0,0.3)'
+            boxShadow: 'inset 3px 0 5px rgba(0,0,0,0.25), 2px 0 0 #E6E0D4, 3px 0 0 #BDB5A6, 5px 0 0 #E6E0D4, 6px 0 0 #BDB5A6'
           }}
         />
 
@@ -285,7 +297,7 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onOpenBook(subject.id, u.id);
+                handleBookClick(u.id);
               }}
               className="px-1.5 py-1 rounded-r-md text-[10px] font-mono font-extrabold border-y border-r transition-all hover:translate-x-1 active:translate-x-0 shadow-md text-stone-900"
               style={{

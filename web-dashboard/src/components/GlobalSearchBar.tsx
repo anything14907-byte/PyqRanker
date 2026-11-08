@@ -238,7 +238,7 @@ export const GlobalSearchBar: React.FC<GlobalSearchBarProps> = ({
           }}
           onFocus={() => setIsSearchOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder={isMobileEffective ? "🔍 Search topics, PYQs, or notes..." : "🔍 Search topics, PYQs, or notes... (Press /)"}
+          placeholder={isMobileEffective ? "Search topics, PYQs, or notes..." : "Search topics, PYQs, or notes... (Press /)"}
           className="w-full pl-8 pr-14 py-1.5 text-xs rounded-xl instrument-well text-paper-ink dark:text-night-text placeholder-paper-muted dark:placeholder-night-muted focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
         />
 
