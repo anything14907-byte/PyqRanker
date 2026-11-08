@@ -788,7 +788,7 @@ export const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({
                     </div>
 
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="px-3 py-1.5 rounded-xl bg-black/80 backdrop-blur-md text-white text-xs font-bold flex items-center gap-1.5">
+                      <span className="px-3 py-1.5 rounded-xl bg-black text-white text-xs font-bold flex items-center gap-1.5 shadow-md">
                         <Eye className="w-3.5 h-3.5" />
                         <span>Tap to Zoom</span>
                       </span>

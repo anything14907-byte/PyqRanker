@@ -43,7 +43,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md animate-fade-in">
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/95 animate-fade-in">
       
       {/* Header Bar */}
       <div className="h-16 px-4 sm:px-6 bg-[#0F172A]/95 border-b border-white/10 flex items-center justify-between gap-3 shrink-0">

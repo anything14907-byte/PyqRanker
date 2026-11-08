@@ -1115,7 +1115,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
 
       {/* Embedded YouTube Video Modal */}
       {activeVideoModalUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-slide-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-fade-slide-up">
           <div className="w-full max-w-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border rounded-3xl overflow-hidden shadow-2xl relative space-y-3 p-4">
             <div className="flex items-center justify-between px-2 pt-1">
               <span className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center gap-2">

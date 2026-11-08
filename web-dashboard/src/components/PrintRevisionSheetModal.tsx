@@ -120,7 +120,7 @@ export const PrintRevisionSheetModal: React.FC<PrintRevisionSheetModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm animate-fade-in print:p-0 print:bg-white print:static">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 animate-fade-in print:p-0 print:bg-white print:static">
       <div className="w-full max-w-5xl max-h-[92vh] bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border rounded-3xl shadow-2xl flex flex-col overflow-hidden print:max-h-none print:border-none print:shadow-none print:w-full print:rounded-none">
         
         {/* Header Toolbar (Hidden in Print) */}

@@ -71,7 +71,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     <>
       {/* "More" Drawer for Mobile (Liquid Glass Sheet) */}
       {isMoreOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-md animate-fade-slide-up">
+        <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/80 animate-fade-slide-up">
           <div className="p-6 rounded-t-3xl bg-paper-card/95 dark:bg-[#0c1222]/95 border-t border-white/20 dark:border-white/10 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-paper-border dark:border-white/10">
               <span className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-cyan-400">
@@ -209,7 +209,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       )}
 
       {/* Persistent Bottom Bar on Mobile (< md) - Apple Liquid Glass Dock */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-paper-card/90 dark:bg-[#070b14]/85 backdrop-blur-2xl border-t border-paper-border dark:border-white/15 h-16 flex items-center justify-around px-2 shadow-2xl safe-area-bottom">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FAF7F0] dark:bg-[#0C0E12] border-t border-stone-300 dark:border-stone-800 h-16 flex items-center justify-around px-2 shadow-2xl safe-area-bottom">
         {mainTabs.map(tab => {
           const isActive = currentView === tab.id;
           return (

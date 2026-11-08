@@ -451,7 +451,7 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
                     </div>
                   </div>
                   {isCurrentlyActive && (
-                    <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-lg bg-black/80 text-cyan-400 font-mono text-[10px] font-bold backdrop-blur-xs flex items-center gap-1">
+                    <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-lg bg-black text-cyan-400 font-mono text-[10px] font-bold flex items-center gap-1 shadow-sm">
                       <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                       <span>Loaded in Player</span>
                     </div>
@@ -504,7 +504,7 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
 
       {/* ADD LECTURE MODAL */}
       {isAddOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-slide-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 animate-fade-slide-up">
           <div className="w-full max-w-lg p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-2xl relative space-y-4">
             <button 
               onClick={() => setIsAddOpen(false)}

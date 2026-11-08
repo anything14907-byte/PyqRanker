@@ -1744,7 +1744,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
 
       {/* Rename File Modal */}
       {renamingFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-slide-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 animate-fade-slide-up">
           <form 
             onSubmit={handleRenameFileSubmit}
             className="w-full max-w-md p-6 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-2xl relative space-y-4"
@@ -1804,7 +1804,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
 
       {/* Full Content Reader Modal for Legacy Notes */}
       {activePdfModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-slide-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 overflow-y-auto animate-fade-slide-up">
           <div className="w-full max-w-2xl p-6 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-2xl relative my-8 max-h-[85vh] flex flex-col">
             <button
               onClick={() => setActivePdfModal(null)}

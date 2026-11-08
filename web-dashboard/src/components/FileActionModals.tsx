@@ -37,7 +37,7 @@ export const RenameFileModal: React.FC<RenameFileModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-fade-in">
       <div className="w-full max-w-md rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-2xl p-6 space-y-5 animate-scale-up">
         
         <div className="flex items-center justify-between pb-3 border-b border-paper-border dark:border-night-border">
@@ -164,7 +164,7 @@ export const MoveFileModal: React.FC<MoveFileModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-fade-in">
       <div className="w-full max-w-md rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-2xl p-6 space-y-5 animate-scale-up">
         
         <div className="flex items-center justify-between pb-3 border-b border-paper-border dark:border-night-border">

@@ -116,15 +116,13 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xl animate-fade-slide-up">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 animate-fade-slide-up">
       <div 
         className="w-full max-w-lg rounded-3xl p-6 sm:p-7 relative border shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto"
         style={{
-          background: 'rgba(15, 23, 42, 0.88)',
-          backdropFilter: 'blur(28px) saturate(210%) brightness(1.08)',
-          WebkitBackdropFilter: 'blur(28px) saturate(210%) brightness(1.08)',
+          background: '#0F172A',
           borderColor: 'rgba(255, 255, 255, 0.22)',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.45)'
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.5)'
         }}
       >
         {/* Header */}

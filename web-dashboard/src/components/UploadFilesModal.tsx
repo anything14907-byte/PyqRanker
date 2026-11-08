@@ -140,7 +140,7 @@ export const UploadFilesModal: React.FC<UploadFilesModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-fade-in">
       <div className="w-full max-w-xl rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-2xl p-6 space-y-5 animate-scale-up max-h-[90vh] overflow-y-auto">
         
         {/* Header */}

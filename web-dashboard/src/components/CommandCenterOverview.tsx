@@ -558,7 +558,7 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
         const totalItemsLost = subTopicsCount + subPyqsCount + subTasksCount + subCardsCount;
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-slide-up">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 animate-fade-slide-up">
             <div className="w-full max-w-sm p-6 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-xl">
               <div className="flex items-center gap-3 mb-3 text-rose-600 dark:text-rose-400">
                 <AlertCircle className="w-6 h-6" />

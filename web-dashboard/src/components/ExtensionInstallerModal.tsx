@@ -62,7 +62,7 @@ export const ExtensionInstallerModal: React.FC<ExtensionInstallerModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-md overflow-y-auto animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 overflow-y-auto animate-in fade-in">
       <div className="w-full max-w-3xl rounded-3xl border border-paper-border dark:border-night-border bg-paper-card dark:bg-night-card shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
         
         {/* Header */}

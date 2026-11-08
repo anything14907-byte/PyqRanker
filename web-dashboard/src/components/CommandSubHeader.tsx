@@ -94,7 +94,7 @@ export const CommandSubHeader: React.FC<CommandSubHeaderProps> = ({
   };
 
   return (
-    <div className="w-full px-4 sm:px-7 py-2.5 border-b border-paper-border/60 dark:border-white/10 bg-paper-card/60 dark:bg-black/25 backdrop-blur-xl transition-colors">
+    <div className="w-full px-4 sm:px-7 py-2 border-b border-stone-300 dark:border-stone-800 bg-[#FAF7F0] dark:bg-[#0C0E12] transition-colors">
       <div className="w-full flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         
         {/* LEFT: Exam Type Segmented Glass Selector (Responsive wrap on mobile so NO pill is cut off) */}

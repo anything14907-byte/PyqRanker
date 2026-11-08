@@ -66,7 +66,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-md select-none animate-fade-in"
+      className="fixed inset-0 z-50 flex flex-col bg-black/95 select-none animate-fade-in"
       onMouseUp={handleMouseUp}
     >
       {/* Top Controls Bar */}
@@ -195,7 +195,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
         />
 
         {/* Mobile Zoom Floating Bar */}
-        <div className="sm:hidden absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-[#1E293B]/90 backdrop-blur-md rounded-2xl p-1.5 border border-white/20 shadow-2xl">
+        <div className="sm:hidden absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-[#1E293B] rounded-2xl p-1.5 border border-white/20 shadow-2xl">
           <button
             onClick={handleZoomOut}
             className="p-2 text-white/80 active:text-white"

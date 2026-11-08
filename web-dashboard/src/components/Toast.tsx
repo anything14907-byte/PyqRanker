@@ -20,12 +20,12 @@ export const Toast: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
       {toasts.map(t => (
         <div
           key={t.id}
-          className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-2xl shadow-xl border backdrop-blur-md text-xs font-medium animate-in slide-in-from-bottom-2 duration-200 ${
+          className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-2xl shadow-xl border text-xs font-medium animate-in slide-in-from-bottom-2 duration-200 ${
             t.type === 'success'
-              ? 'bg-emerald-950/90 border-emerald-800 text-emerald-100'
+              ? 'bg-emerald-950 border-emerald-800 text-emerald-100'
               : t.type === 'error'
-              ? 'bg-rose-950/90 border-rose-800 text-rose-100'
-              : 'bg-night-card/95 border-night-border text-night-text'
+              ? 'bg-rose-950 border-rose-800 text-rose-100'
+              : 'bg-stone-900 border-stone-700 text-stone-100'
           }`}
         >
           <div className="flex items-center gap-2">

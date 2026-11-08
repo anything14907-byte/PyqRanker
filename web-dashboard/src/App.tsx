@@ -28,10 +28,10 @@ import { BackupModal } from './components/BackupModal';
 import { MobileBottomNav, ExtendedNavView } from './components/MobileBottomNav';
 import { Toast, ToastMessage } from './components/Toast';
 import { SearchIndexItem } from './utils/searchService';
-import { SpaceScene } from './components/SpaceScene';
-import { LiquidAuroraScene } from './components/LiquidAuroraScene';
 import { CommandSubHeader } from './components/CommandSubHeader';
 import { InstallAppModal } from './components/InstallAppModal';
+import { HangingBulbToggle } from './components/HangingBulbToggle';
+import { OpenBookBinder } from './components/OpenBookBinder';
 import confetti from 'canvas-confetti';
 import { Sparkles } from 'lucide-react';
 
@@ -77,76 +77,6 @@ function DashboardContent() {
 
   // Toast feedback
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  // Ticker for live 1-second countdown rerender across the entire app
-  const [, setTicker] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTicker(t => t + 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Specular Liquid Rim Light Tracking: pointermove & touchmove -> --mouse-x, --mouse-y
-  useEffect(() => {
-    const updatePointer = (e: MouseEvent | TouchEvent) => {
-      let clientX = window.innerWidth / 2;
-      let clientY = window.innerHeight / 2;
-      if ('touches' in e && e.touches.length > 0) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else if ('clientX' in e) {
-        clientX = (e as MouseEvent).clientX;
-        clientY = (e as MouseEvent).clientY;
-      }
-      const x = Math.round((clientX / window.innerWidth) * 100);
-      const y = Math.round((clientY / window.innerHeight) * 100);
-      document.documentElement.style.setProperty('--mouse-x', `${x}%`);
-      document.documentElement.style.setProperty('--mouse-y', `${y}%`);
-    };
-
-    window.addEventListener('mousemove', updatePointer, { passive: true });
-    window.addEventListener('touchmove', updatePointer, { passive: true });
-    return () => {
-      window.removeEventListener('mousemove', updatePointer);
-      window.removeEventListener('touchmove', updatePointer);
-    };
-  }, []);
-
-  // Interactive Optical Glass Specular Glare: updates --x and --y on hovered cards
-  useEffect(() => {
-    const handleCardGlare = (e: MouseEvent | TouchEvent) => {
-      let clientX = 0;
-      let clientY = 0;
-      if ('touches' in e && e.touches.length > 0) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else if ('clientX' in e) {
-        clientX = (e as MouseEvent).clientX;
-        clientY = (e as MouseEvent).clientY;
-      }
-      const cards = document.querySelectorAll('.hardware-card, .liquid-glass-card');
-      cards.forEach(card => {
-        const rect = card.getBoundingClientRect();
-        if (
-          clientX >= rect.left - 20 &&
-          clientX <= rect.right + 20 &&
-          clientY >= rect.top - 20 &&
-          clientY <= rect.bottom + 20
-        ) {
-          (card as HTMLElement).style.setProperty('--x', `${clientX - rect.left}px`);
-          (card as HTMLElement).style.setProperty('--y', `${clientY - rect.top}px`);
-        }
-      });
-    };
-
-    window.addEventListener('mousemove', handleCardGlare, { passive: true });
-    window.addEventListener('touchmove', handleCardGlare, { passive: true });
-    return () => {
-      window.removeEventListener('mousemove', handleCardGlare);
-      window.removeEventListener('touchmove', handleCardGlare);
-    };
-  }, []);
 
   // PWA Native Install Prompt Capture
   useEffect(() => {
@@ -717,18 +647,19 @@ function DashboardContent() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-paper-bg dark:bg-[#070b14] text-paper-ink dark:text-night-text transition-colors duration-200">
-      {/* Living Fluid Aurora & Micro Caustic Wave Mesh Backdrop */}
-      <LiquidAuroraScene />
+    <div className="relative min-h-screen w-full bg-[#E5DFD3] dark:bg-[#0C0E12] text-paper-ink dark:text-night-text transition-colors duration-200">
+      {/* 💡 Signature Hanging Light Bulb & Volumetric Spotlight Theme Switcher */}
+      <HangingBulbToggle />
       
       <div className="relative z-10 w-full min-h-screen">
-        {/* ROW 1: Ultra-Clean Main Liquid Glass Header Bar */}
+        {/* ROW 1: Studio Hardcover Navigation Bar */}
         <Navbar
           currentView={currentView}
           onSelectView={handleSelectView}
           onOpenBackup={() => setIsBackupModalOpen(true)}
           onFastExport={handleFastExport}
           onFastImport={handleFastImport}
+          onOpenAddSubject={() => setIsAddSubjectOpen(true)}
           onOpenInstallApp={() => setIsInstallModalOpen(true)}
         />
 
@@ -753,9 +684,9 @@ function DashboardContent() {
         {/* Full-State Synchronized Celebratory Banner */}
         {showSyncSuccessBanner && (
           <div className="w-full px-4 sm:px-7 pt-3 animate-fade-slide-up">
-            <div className="relative overflow-hidden rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-indigo-500/20 border border-emerald-500/50 backdrop-blur-2xl shadow-glow-cyan flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-white">
+            <div className="relative overflow-hidden rounded-2xl p-4 sm:p-5 bg-emerald-950 border border-emerald-500 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-white">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-400 to-cyan-400 text-black flex items-center justify-center shrink-0 font-bold shadow-md">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-400 to-amber-400 text-black flex items-center justify-center shrink-0 font-bold shadow-md">
                   <Sparkles className="w-5 h-5 text-black" />
                 </div>
                 <div>
@@ -780,7 +711,7 @@ function DashboardContent() {
       {/* Main Content Area: 100% corner-to-corner full viewport width (16px 28px edge padding) */}
       <main className="w-full px-4 sm:px-7 py-4 pb-28 md:pb-12 box-border">
         
-        {/* VIEW 1: TODAY / DASHBOARD SCREEN (Restored + without auto-generated planner + single + Add Subject) */}
+        {/* VIEW 1: TODAY / DASHBOARD SCREEN (Tactile 3D Hardcover Bookshelf Desk) */}
         {currentView === 'today' && (
           <TodayScreen
             subjects={subjects}
@@ -793,7 +724,7 @@ function DashboardContent() {
             onToggleTopicCompleted={handleToggleTopicCompleted}
             onSelectSubject={(id, unitId) => {
               handleSelectSubject(id, unitId);
-              setCurrentView('workspace');
+              setCurrentView('syllabus');
             }}
             onNavigateView={setCurrentView}
             onShowToast={showToast}
@@ -804,31 +735,59 @@ function DashboardContent() {
           />
         )}
 
-        {/* VIEW 2: SYLLABUS TRACKER (Restored + custom units + topic videos + unit reorder + IndexedDB files + topic highlight) */}
-        {currentView === 'syllabus' && (
-          <SyllabusTrackerView
-            subjects={subjects}
-            activeSubjectId={activeSubjectId}
-            activeExamId={activeExamId}
-            highlightedTopicId={highlightedTopicId}
-            onSelectSubject={handleSelectSubject}
-            topics={topics}
-            onToggleTopicCompleted={handleToggleTopicCompleted}
-            onSetTopicMastery={handleSetTopicMastery}
-            onAddTopic={handleAddTopic}
-            onDeleteTopic={handleDeleteTopic}
-            onUpdateTopicTitle={handleUpdateTopicTitle}
-            onReorderTopics={handleReorderTopics}
-            onAddTopicVideo={handleAddTopicVideo}
-            onRemoveTopicVideo={handleRemoveTopicVideo}
-            onAddUnit={handleAddUnit}
-            onRenameUnit={handleRenameUnit}
-            onDeleteUnit={handleDeleteUnit}
-            onReorderUnit={handleReorderUnit}
-            onOpenAddSubject={() => setIsAddSubjectOpen(true)}
-            onEditSubject={(sub) => setEditingSubject(sub)}
-            onShowToast={showToast}
-          />
+        {/* VIEW 2 & 9: OPEN BOOK BINDER (Widescreen 2-Page Spread with Chapters & Attachments) */}
+        {(currentView === 'syllabus' || currentView === 'workspace') && (
+          activeSubject ? (
+            <OpenBookBinder
+              subject={activeSubject}
+              initialUnitId={activeUnitId}
+              topics={topics}
+              questions={questions}
+              videos={videos}
+              pdfs={pdfs}
+              onToggleTopicCompleted={handleToggleTopicCompleted}
+              onSetTopicMastery={handleSetTopicMastery}
+              onAddTopic={handleAddTopic}
+              onDeleteTopic={handleDeleteTopic}
+              onAddUnit={handleAddUnit}
+              onRenameUnit={handleRenameUnit}
+              onDeleteUnit={handleDeleteUnit}
+              onAddVideo={handleAddVideo}
+              onToggleVideoWatched={handleToggleVideoWatched}
+              onDeleteVideo={handleDeleteVideo}
+              onAddPdf={handleAddPdf}
+              onDeletePdf={handleDeletePdf}
+              onAddQuestion={handleAddQuestion}
+              onToggleQuestionMastered={handleToggleMastered}
+              onSaveQuestionAnswer={handleSaveAnswer}
+              onBackToShelf={() => setCurrentView('today')}
+              onShowToast={showToast}
+            />
+          ) : (
+            <SyllabusTrackerView
+              subjects={subjects}
+              activeSubjectId={activeSubjectId}
+              activeExamId={activeExamId}
+              highlightedTopicId={highlightedTopicId}
+              onSelectSubject={handleSelectSubject}
+              topics={topics}
+              onToggleTopicCompleted={handleToggleTopicCompleted}
+              onSetTopicMastery={handleSetTopicMastery}
+              onAddTopic={handleAddTopic}
+              onDeleteTopic={handleDeleteTopic}
+              onUpdateTopicTitle={handleUpdateTopicTitle}
+              onReorderTopics={handleReorderTopics}
+              onAddTopicVideo={handleAddTopicVideo}
+              onRemoveTopicVideo={handleRemoveTopicVideo}
+              onAddUnit={handleAddUnit}
+              onRenameUnit={handleRenameUnit}
+              onDeleteUnit={handleDeleteUnit}
+              onReorderUnit={handleReorderUnit}
+              onOpenAddSubject={() => setIsAddSubjectOpen(true)}
+              onEditSubject={(sub) => setEditingSubject(sub)}
+              onShowToast={showToast}
+            />
+          )
         )}
 
         {/* VIEW 4: FOCUS TIMER / POMODORO (25/5) */}
@@ -902,38 +861,7 @@ function DashboardContent() {
           />
         )}
 
-        {/* VIEW 9: SUBJECT WORKSPACE */}
-        {currentView === 'workspace' && activeSubject && (
-          <SubjectWorkspace
-            subject={activeSubject}
-            initialUnitId={activeUnitId}
-            questions={questions}
-            tasks={tasks}
-            videos={videos}
-            pdfs={pdfs}
-            onToggleMastered={handleToggleMastered}
-            onSaveAnswer={handleSaveAnswer}
-            onAddQuestion={handleAddQuestion}
-            onToggleTask={handleToggleTask}
-            onAddTask={handleAddTask}
-            onDeleteTask={handleDeleteTask}
-            onAddVideo={handleAddVideo}
-            onUpdateVideoNotes={handleUpdateVideoNotes}
-            onToggleVideoWatched={handleToggleVideoWatched}
-            onDeleteVideo={handleDeleteVideo}
-            onAddPdf={handleAddPdf}
-            onDeletePdf={handleDeletePdf}
-            onMoveItemToUnit={handleMoveItemToUnit}
-            onUpdateSubject={handleUpdateSubject}
-            onDeleteSubject={handleDeleteSubject}
-            activeExamId={activeExamId}
-            topics={topics}
-            pomodoroLogs={pomodoroLogs}
-            onLogPomodoro={handleLogPomodoro}
-            onBackToOverview={() => setCurrentView('overview')}
-            onShowToast={showToast}
-          />
-        )}
+
 
       </main>
 

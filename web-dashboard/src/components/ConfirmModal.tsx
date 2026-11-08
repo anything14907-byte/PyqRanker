@@ -28,7 +28,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   const buttonLabel = confirmLabel || confirmText;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-slide-up">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 animate-fade-slide-up">
       <div 
         className="w-full max-w-md p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-2xl relative space-y-4"
         role="dialog"

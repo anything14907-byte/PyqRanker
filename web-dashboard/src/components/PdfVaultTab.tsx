@@ -284,7 +284,7 @@ export const PdfVaultTab: React.FC<PdfVaultTabProps> = ({
 
       {/* Full Content Reader Modal */}
       {activePdfModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-slide-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 overflow-y-auto animate-fade-slide-up">
           <div className="w-full max-w-2xl p-6 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-2xl relative my-8 max-h-[85vh] flex flex-col">
             <button
               onClick={() => setActivePdfModal(null)}

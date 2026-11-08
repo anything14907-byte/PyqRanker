@@ -1269,7 +1269,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
 
       {/* FULL NOTE MODAL */}
       {viewingPdf && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border rounded-3xl max-w-2xl w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-paper-border dark:border-night-border pb-3">
               <div>
@@ -1305,7 +1305,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
 
       {/* SMART ANALYSIS & API KEY SETTINGS MODAL */}
       {showAiSettings && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-fade-slide-up">
             
             <div className="flex items-center justify-between border-b border-paper-border dark:border-night-border pb-3">
