@@ -10,7 +10,7 @@ import {
   ChevronRight, 
   Palette
 } from 'lucide-react';
-import { formatUnitDisplayName } from '../utils/storageService';
+import { formatUnitDisplayName, getExamUrgencyColor } from '../utils/storageService';
 
 interface TactileSubjectBookProps {
   subject: SubjectMeta;
@@ -50,6 +50,31 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
   // Subject Units mapped as Chapters
   const units = subject.units || [];
 
+  // Exam urgency calculation for the Inset Chronometer Band
+  const examUrgency = subject.examDate ? getExamUrgencyColor(subject.examDate) : null;
+  const hasExamDate = !!(examUrgency && examUrgency.hasDate && examUrgency.fractionalDays > 0);
+  const isPast = !!(examUrgency && examUrgency.hasDate && examUrgency.fractionalDays <= 0);
+
+  // Smooth Green → Yellow → Red Urgency Accent:
+  // >15d: #10B981 (Emerald)
+  // 15–5d: #F59E0B (Warm Amber)
+  // <5d: #EF4444 (Urgent Crimson Red) with soft pulse
+  let urgencyAccent = '#A8A29E'; // default / unset
+  let isCriticallyUrgent = false;
+
+  if (hasExamDate) {
+    if (examUrgency.fractionalDays > 15) {
+      urgencyAccent = '#10B981';
+    } else if (examUrgency.fractionalDays >= 5) {
+      urgencyAccent = '#F59E0B';
+    } else {
+      urgencyAccent = '#EF4444';
+      isCriticallyUrgent = true;
+    }
+  } else if (isPast) {
+    urgencyAccent = '#64748B';
+  }
+
   const handleBookClick = (unitId?: string) => {
     if (isOpening) return;
     setIsOpening(true);
@@ -65,32 +90,6 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
       className="relative group select-none w-full flex flex-col justify-end"
       style={{ perspective: '1600px' }}
     >
-      {/* Physical Hanging Ribbon Bookmark protruding from TOP */}
-      <div 
-        onClick={(e) => {
-          e.stopPropagation();
-          onEditExamDate(subject);
-        }}
-        className="absolute -top-3.5 left-8 z-30 cursor-pointer transition-transform hover:-translate-y-1 active:translate-y-0.5 group/ribbon"
-        title="Click to change exam target date"
-      >
-        <div 
-          className="relative px-3 py-1 text-[11px] font-mono font-extrabold flex items-center gap-1.5 shadow-md rounded-t-sm"
-          style={{
-            background: 'linear-gradient(180deg, #1C1917 0%, #292524 100%)',
-            borderTop: '2px solid #F59E0B',
-            color: '#F5F5F4'
-          }}
-        >
-          <Calendar className="w-3 h-3 text-amber-400 shrink-0" />
-          <LiveCountdown examDate={subject.examDate} compact={true} />
-        </div>
-        {/* Ribbon Tail Notch */}
-        <div 
-          className="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[8px] border-t-[#292524] mx-auto"
-        />
-      </div>
-
       {/* 3D HARDCOVER BOOK BODY (Stripe Press Craftsmanship) */}
       <div 
         className={`relative w-full rounded-r-2xl rounded-l-md cursor-pointer flex transition-all duration-500 ease-out ${
@@ -98,7 +97,7 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
         }`}
         style={{
           transformStyle: 'preserve-3d',
-          minHeight: '345px',
+          minHeight: '360px',
           boxShadow: '12px 22px 35px -8px rgba(0, 0, 0, 0.5), 2px 4px 8px rgba(0, 0, 0, 0.3)'
         }}
         onClick={() => handleBookClick()}
@@ -218,7 +217,7 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
           )}
 
           {/* Center: Full Uncut Subject Title in Architectural Typography */}
-          <div className="my-auto py-4">
+          <div className="my-auto py-2">
             <h3 
               className="text-lg sm:text-xl font-serif font-extrabold text-white tracking-tight leading-snug drop-shadow-md break-words"
               style={{
@@ -228,11 +227,72 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
               {subject.name}
             </h3>
 
-            <div className="flex items-center gap-2 mt-2 text-xs text-white/80 font-mono">
+            <div className="flex items-center gap-2 mt-1.5 text-xs text-white/80 font-mono">
               <Layers className="w-3.5 h-3.5 text-amber-400" />
               <span>{units.length} Chapters</span>
               <span>•</span>
               <span>{totalTopics} Topics</span>
+            </div>
+          </div>
+
+          {/* Embossed Collector's Edition Chronometer Band (Debossed inside cover cloth) */}
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditExamDate(subject);
+            }}
+            className="w-full my-2.5 px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 group/band hover:scale-[1.01] active:scale-[0.99]"
+            style={{
+              backgroundColor: 'rgba(10, 12, 16, 0.42)',
+              border: '1px solid rgba(255, 255, 255, 0.09)',
+              borderLeft: `3.5px solid ${urgencyAccent}`,
+              boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.15)'
+            }}
+            title="Click anywhere to change target exam date & time"
+          >
+            <div className="flex items-center justify-between gap-2">
+              {/* Left Side: Glowing urgency status dot + Formatted Exam Date */}
+              <div className="flex items-center gap-2 min-w-0">
+                <span 
+                  className={`w-2 h-2 rounded-full shrink-0 transition-all ${
+                    isCriticallyUrgent ? 'animate-pulse' : ''
+                  }`}
+                  style={{
+                    backgroundColor: urgencyAccent,
+                    boxShadow: `0 0 8px ${urgencyAccent}`
+                  }}
+                />
+                <span className="text-[11px] font-mono font-bold text-white/95 truncate flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-white/70 shrink-0" />
+                  <span className="truncate">
+                    {hasExamDate 
+                      ? examUrgency.formattedExamDate 
+                      : isPast 
+                      ? 'Exam Finished' 
+                      : 'Set Exam Target Date'}
+                  </span>
+                </span>
+              </div>
+
+              {/* Right Side: Live Countdown Pill Badge */}
+              <div className="shrink-0">
+                {hasExamDate ? (
+                  <div 
+                    className="px-2 py-0.5 rounded-md font-mono text-[10.5px] font-black tracking-tight tabular-nums flex items-center shadow-inner"
+                    style={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                      color: urgencyAccent,
+                      border: `1px solid ${urgencyAccent}40`
+                    }}
+                  >
+                    <LiveCountdown examDate={subject.examDate} compact={true} />
+                  </div>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold text-white/60 bg-white/5 border border-white/10 group-hover/band:text-amber-400 group-hover/band:border-amber-400/40 transition-colors">
+                    + Set Date
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

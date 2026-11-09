@@ -621,3 +621,4 @@ export async function getPdfArrayBuffer(pdfId: string, dataUrlFallback?: string)
 
   return null;
 }
+

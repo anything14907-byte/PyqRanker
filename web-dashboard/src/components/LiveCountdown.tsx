@@ -67,7 +67,8 @@ export const LiveCountdown: React.FC<LiveCountdownProps> = memo(({
     urgencyLabel = 'Approaching';
   }
 
-  const timeString = `${urgency.days}d : ${urgency.hours}h : ${urgency.minutes}m : ${urgency.seconds}s`;
+  const pad = (n: number) => String(Math.max(0, n)).padStart(2, '0');
+  const timeString = `${pad(urgency.days)}d : ${pad(urgency.hours)}h : ${pad(urgency.minutes)}m : ${pad(urgency.seconds)}s`;
 
   if (showRibbonStyle) {
     return (
