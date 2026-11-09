@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   SubjectMeta, 
   PYQQuestion, 
@@ -35,7 +35,61 @@ import { recoverAndNormalizePdfs } from './utils/pdfStorageService';
 import confetti from 'canvas-confetti';
 import { Sparkles } from 'lucide-react';
 
+// ==========================================
+// URL HASH ROUTER HELPERS (Single Source of Truth)
+// Supports: #/subject/:subjectId, #/subject/:subjectId/unit/:unitId, #/subject/:subjectId/workspace, #/:view
+// ==========================================
+function parseHash(hash: string): { view?: MainNavView; subjectId?: string; unitId?: string } {
+  if (!hash) return {};
+  const clean = hash.replace(/^#\/?/, '').trim();
+  if (!clean || clean === 'today') {
+    return { view: 'today' };
+  }
+  const parts = clean.split('/').filter(Boolean);
+
+  // Format: subject/:subjectId/unit/:unitId
+  // Format: subject/:subjectId/workspace
+  // Format: subject/:subjectId
+  if (parts[0] === 'subject' && parts[1]) {
+    const subjectId = decodeURIComponent(parts[1]);
+    let unitId = 'all';
+    let view: MainNavView = 'syllabus';
+    if (parts[2] === 'unit' && parts[3]) {
+      unitId = decodeURIComponent(parts[3]);
+    } else if (parts[2] === 'workspace') {
+      view = 'workspace';
+    }
+    return { view, subjectId, unitId };
+  }
+
+  const validViews: MainNavView[] = ['today', 'syllabus', 'workspace', 'timer', 'flashcards', 'vault', 'pdf', 'overview'];
+  const viewCandidate = parts[0] as MainNavView;
+  if (validViews.includes(viewCandidate)) {
+    return { view: viewCandidate };
+  }
+
+  return {};
+}
+
+function buildHash(view: MainNavView, subjectId?: string, unitId?: string): string {
+  if (view === 'today') {
+    return '#/today';
+  }
+  if ((view === 'syllabus' || view === 'workspace') && subjectId) {
+    if (view === 'workspace') {
+      return `#/subject/${encodeURIComponent(subjectId)}/workspace`;
+    }
+    if (unitId && unitId !== 'all') {
+      return `#/subject/${encodeURIComponent(subjectId)}/unit/${encodeURIComponent(unitId)}`;
+    }
+    return `#/subject/${encodeURIComponent(subjectId)}`;
+  }
+  return `#/${view}`;
+}
+
 function DashboardContent() {
+  const tabIdRef = useRef<string>(Math.random().toString(36).substring(2, 9));
+
   // 1. Multiple Exams State (Requirement 3)
   const [examSessions, setExamSessions] = useState<ExamSession[]>(() => storageService.getExamSessions());
   const [activeExamId, setActiveExamId] = useState<string>(() => storageService.getActiveExam());
@@ -50,14 +104,29 @@ function DashboardContent() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>(() => storageService.getFlashcards(undefined, activeExamId));
   const [pomodoroLogs, setPomodoroLogs] = useState<PomodoroSession[]>(() => storageService.getPomodoroLogs(activeExamId));
 
-  // Active navigation view: default to 'today' (Dashboard screen)
-  const [currentView, setCurrentView] = useState<MainNavView>('today');
+  // Initial navigation state parsed from URL Hash -> localStorage -> fallback
+  const initialHash = parseHash(typeof window !== 'undefined' ? window.location.hash : '');
 
-  // Currently focused subject & unit
-  const [activeSubjectId, setActiveSubjectId] = useState<string>(() => {
-    return localStorage.getItem('exam_hub_v3_active_subject') || subjects[0]?.id || 'os';
+  // Active navigation view: default to 'today' (Dashboard screen) or URL hash
+  const [currentView, setCurrentView] = useState<MainNavView>(() => {
+    if (initialHash.view) return initialHash.view;
+    const saved = localStorage.getItem('exam_hub_v3_current_view') as MainNavView;
+    const validViews: MainNavView[] = ['today', 'syllabus', 'workspace', 'timer', 'flashcards', 'vault', 'pdf', 'overview'];
+    return (saved && validViews.includes(saved)) ? saved : 'today';
   });
-  const [activeUnitId, setActiveUnitId] = useState<string>('all');
+
+  // Currently focused subject & unit: strictly preserves selected subject across refreshes/reloads
+  const [activeSubjectId, setActiveSubjectId] = useState<string>(() => {
+    const candidate = initialHash.subjectId || localStorage.getItem('exam_hub_v3_active_subject');
+    const initialSubs = storageService.getSubjects(activeExamId);
+    if (candidate && initialSubs.some(s => s.id === candidate)) {
+      return candidate;
+    }
+    return initialSubs[0]?.id || 'os';
+  });
+  const [activeUnitId, setActiveUnitId] = useState<string>(() => {
+    return initialHash.unitId || localStorage.getItem('exam_hub_v3_active_unit') || 'all';
+  });
   const [activePdfIdForReader, setActivePdfIdForReader] = useState<string | undefined>(undefined);
   const [highlightedTopicId, setHighlightedTopicId] = useState<string | undefined>(undefined);
 
@@ -153,12 +222,21 @@ function DashboardContent() {
     setFlashcards(storageService.getFlashcards(undefined, examId));
     setPomodoroLogs(storageService.getPomodoroLogs(examId));
 
-    if (subs.length > 0) {
-      setActiveSubjectId(subs[0].id);
-      localStorage.setItem('exam_hub_v3_active_subject', subs[0].id);
-    } else {
-      setActiveSubjectId('');
-    }
+    // 🚨 ROOT CAUSE FIX: NEVER reset activeSubjectId to subs[0].id if currently active/saved subject exists!
+    setActiveSubjectId(prev => {
+      const hashParsed = parseHash(typeof window !== 'undefined' ? window.location.hash : '');
+      const candidateId = hashParsed.subjectId || prev || localStorage.getItem('exam_hub_v3_active_subject') || '';
+      const found = subs.find(s => s.id === candidateId);
+      if (found) {
+        localStorage.setItem('exam_hub_v3_active_subject', found.id);
+        return found.id;
+      }
+      const fallback = subs[0]?.id || '';
+      if (fallback) {
+        localStorage.setItem('exam_hub_v3_active_subject', fallback);
+      }
+      return fallback;
+    });
   }, []);
 
   // Cross-Tab Broadcast Helper (Lightweight Native Web BroadcastChannel)
@@ -166,7 +244,11 @@ function DashboardContent() {
     try {
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         const bc = new BroadcastChannel('study_os_channel');
-        bc.postMessage({ type: 'LOCAL_DATA_CHANGED', timestamp: Date.now() });
+        bc.postMessage({ 
+          type: 'LOCAL_DATA_CHANGED', 
+          senderId: tabIdRef.current,
+          timestamp: Date.now() 
+        });
         bc.close();
       }
     } catch {}
@@ -177,6 +259,10 @@ function DashboardContent() {
     if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
     const bc = new BroadcastChannel('study_os_channel');
     bc.onmessage = (event) => {
+      // Ignore broadcast messages from this exact tab to prevent self-reinitialization
+      if (event.data?.senderId && event.data.senderId === tabIdRef.current) {
+        return;
+      }
       if (event.data?.type === 'LOCAL_DATA_CHANGED') {
         const active = storageService.getActiveExam();
         setActiveExamId(active);
@@ -187,6 +273,50 @@ function DashboardContent() {
       bc.close();
     };
   }, [reloadExamData]);
+
+  // Sync URL hash and localStorage whenever activeSubjectId, activeUnitId, or currentView changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('exam_hub_v3_current_view', currentView);
+      if (activeSubjectId) {
+        localStorage.setItem('exam_hub_v3_active_subject', activeSubjectId);
+      }
+      localStorage.setItem('exam_hub_v3_active_unit', activeUnitId);
+
+      const targetHash = buildHash(currentView, activeSubjectId, activeUnitId);
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState(null, '', targetHash);
+      }
+    } catch {}
+  }, [currentView, activeSubjectId, activeUnitId]);
+
+  // Handle browser Back / Forward navigation (popstate / hashchange)
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const parsed = parseHash(window.location.hash);
+      if (parsed.view) {
+        setCurrentView(parsed.view);
+      }
+      if (parsed.subjectId) {
+        const currentSubs = storageService.getSubjects(activeExamId);
+        if (currentSubs.some(s => s.id === parsed.subjectId)) {
+          setActiveSubjectId(parsed.subjectId);
+          localStorage.setItem('exam_hub_v3_active_subject', parsed.subjectId);
+        }
+      }
+      if (parsed.unitId) {
+        setActiveUnitId(parsed.unitId);
+        localStorage.setItem('exam_hub_v3_active_unit', parsed.unitId);
+      }
+    };
+
+    window.addEventListener('hashchange', handleLocationChange);
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('hashchange', handleLocationChange);
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, [activeExamId]);
 
   // Fast 1-Click JSON Backup & Smart Sync Handlers
   const handleFastExport = useCallback(() => {
@@ -257,6 +387,10 @@ function DashboardContent() {
 
   const handleSelectView = (view: MainNavView) => {
     setCurrentView(view);
+    const targetHash = buildHash(view, activeSubjectId, activeUnitId);
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash;
+    }
   };
 
   // Exam switcher handlers (Requirement 3)
@@ -309,8 +443,14 @@ function DashboardContent() {
   // ==========================================
   const handleSelectSubject = (id: string, unitId?: string) => {
     setActiveSubjectId(id);
-    setActiveUnitId(unitId || 'all');
+    const uId = unitId || 'all';
+    setActiveUnitId(uId);
     localStorage.setItem('exam_hub_v3_active_subject', id);
+    localStorage.setItem('exam_hub_v3_active_unit', uId);
+    const targetHash = buildHash('syllabus', id, uId);
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash;
+    }
   };
 
   // Search navigation handlers
@@ -375,8 +515,13 @@ function DashboardContent() {
   };
 
   const handleSelectSubjectAndOpenWorkspace = (id: string, unitId?: string) => {
-    handleSelectSubject(id, unitId);
+    setActiveSubjectId(id);
+    const uId = unitId || 'all';
+    setActiveUnitId(uId);
+    localStorage.setItem('exam_hub_v3_active_subject', id);
+    localStorage.setItem('exam_hub_v3_active_unit', uId);
     setCurrentView('workspace');
+    window.location.hash = `#/subject/${encodeURIComponent(id)}/workspace`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -782,6 +927,7 @@ function DashboardContent() {
               questions={questions}
               videos={videos}
               pdfs={pdfs}
+              onSelectUnit={(unitId) => handleSelectSubject(activeSubject.id, unitId)}
               onToggleTopicCompleted={handleToggleTopicCompleted}
               onSetTopicMastery={handleSetTopicMastery}
               onAddTopic={handleAddTopic}
@@ -803,7 +949,7 @@ function DashboardContent() {
               onAddFlashcard={handleAddFlashcard}
               onBackToShelf={() => {
                 setActivePdfIdForReader(undefined);
-                setCurrentView('today');
+                handleSelectView('today');
               }}
               onShowToast={showToast}
             />

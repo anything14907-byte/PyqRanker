@@ -151,10 +151,13 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
 
   // Sync selectedSubjectId if activeSubjectId changes from outside
   useEffect(() => {
-    if (activeSubjectId && activeSubjectId !== selectedSubjectId) {
-      setSelectedSubjectId(activeSubjectId);
+    if (activeSubjectId) {
+      const match = subjects.find(s => s.id === activeSubjectId);
+      if (match && match.id !== selectedSubjectId) {
+        setSelectedSubjectId(match.id);
+      }
     }
-  }, [activeSubjectId]);
+  }, [activeSubjectId, subjects, selectedSubjectId]);
 
   // Load subject files from IndexedDB whenever subject or exam changes
   useEffect(() => {
@@ -190,6 +193,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
   // Handlers
   const handleCreateTopic = (unit: SubjectUnit, e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!newTopicTitle.trim()) return;
 
     const videoUrls: string[] = [];
@@ -219,6 +223,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
   // Topic Edit Name (Requirement 7)
   const handleEditTopicSubmit = (topicId: string, e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!editingTopicTitle.trim()) return;
     if (onUpdateTopicTitle) {
       onUpdateTopicTitle(topicId, editingTopicTitle.trim());
@@ -271,6 +276,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
   // Unit creation with separate Label and Title (Requirement 5)
   const handleCreateUnit = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!newUnitTitle.trim()) return;
     onAddUnit(currentSubject.id, newUnitLabel.trim() || `Unit ${(currentSubject.units?.length || 0) + 1}`, newUnitTitle.trim());
     setNewUnitTitle('');
@@ -282,6 +288,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
   // Unit rename with separate Label and Title (Requirement 5)
   const handleRenameUnitSubmit = (unitId: string, e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!editingUnitTitle.trim()) return;
     if (onRenameUnit) {
       onRenameUnit(currentSubject.id, unitId, editingUnitLabel.trim() || 'Unit', editingUnitTitle.trim());
@@ -292,6 +299,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
 
   const handleAddVideoToTopicSubmit = (topicId: string, e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!videoUrlInput.trim()) return;
     if (onAddTopicVideo) {
       onAddTopicVideo(topicId, videoUrlInput.trim());
@@ -662,7 +670,14 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-paper-border dark:border-night-border">
                 
                 {isEditingThisUnit ? (
-                  <form onSubmit={(e) => handleRenameUnitSubmit(unit.id, e)} className="flex items-center gap-2 flex-1 flex-wrap">
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleRenameUnitSubmit(unit.id, e);
+                    }} 
+                    className="flex items-center gap-2 flex-1 flex-wrap"
+                  >
                     <input
                       type="text"
                       placeholder="Unit Label"
@@ -693,7 +708,9 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                         {/* Unit Edit / Rename Button */}
                         {onRenameUnit && (
                           <button
-                            onClick={() => {
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditingUnitId(unit.id);
                               setEditingUnitLabel(unit.unitLabel || `Unit ${unit.unit || unitIdx + 1}`);
                               setEditingUnitTitle(unit.title || '');
@@ -709,16 +726,24 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                         {onReorderUnit && (
                           <div className="flex items-center gap-0.5">
                             <button
+                              type="button"
                               disabled={unitIdx === 0}
-                              onClick={() => onReorderUnit(currentSubject.id, unit.id, 'up')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onReorderUnit(currentSubject.id, unit.id, 'up');
+                              }}
                               className="p-1 rounded text-paper-muted hover:text-paper-ink disabled:opacity-30 disabled:cursor-not-allowed"
                               title="Move unit up"
                             >
                               <ArrowUp className="w-3.5 h-3.5" />
                             </button>
                             <button
+                              type="button"
                               disabled={unitIdx === (currentSubject.units?.length || 0) - 1}
-                              onClick={() => onReorderUnit(currentSubject.id, unit.id, 'down')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onReorderUnit(currentSubject.id, unit.id, 'down');
+                              }}
                               className="p-1 rounded text-paper-muted hover:text-paper-ink disabled:opacity-30 disabled:cursor-not-allowed"
                               title="Move unit down"
                             >
@@ -730,7 +755,11 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                         {/* Delete Unit */}
                         {onDeleteUnit && (
                           <button
-                            onClick={() => setUnitToDelete({ id: unit.id, name: unitDisplayName })}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUnitToDelete({ id: unit.id, name: unitDisplayName });
+                            }}
                             className="p-1 rounded text-paper-muted hover:text-rose-500"
                             title="Delete unit"
                           >
@@ -748,7 +777,11 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
 
                 {/* + Add Topic Button */}
                 <button
-                  onClick={() => setIsAddingTopicUnitId(isAddingToThisUnit ? null : unit.id)}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAddingTopicUnitId(isAddingToThisUnit ? null : unit.id);
+                  }}
                   className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border hover:border-emerald-500 text-paper-ink dark:text-night-text flex items-center gap-1.5 btn-tactile self-start sm:self-auto shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -758,7 +791,14 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
 
               {/* Inline Form to Add Topic */}
               {isAddingToThisUnit && (
-                <form onSubmit={e => handleCreateTopic(unit, e)} className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-emerald-500/30 space-y-3 animate-fade-slide-up">
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCreateTopic(unit, e);
+                  }} 
+                  className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-emerald-500/30 space-y-3 animate-fade-slide-up"
+                >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-paper-ink dark:text-night-text">
                       Add Topic to {unitDisplayName}
@@ -869,7 +909,10 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                             <button
                               type="button"
                               disabled={tIdx === 0}
-                              onClick={() => handleMoveTopic(unit.id, topic.id, 'up')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMoveTopic(unit.id, topic.id, 'up');
+                              }}
                               className="p-1 rounded text-paper-muted hover:text-paper-ink disabled:opacity-20 disabled:cursor-not-allowed"
                               title="Move topic up"
                             >
@@ -878,7 +921,10 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                             <button
                               type="button"
                               disabled={tIdx === unitTopics.length - 1}
-                              onClick={() => handleMoveTopic(unit.id, topic.id, 'down')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMoveTopic(unit.id, topic.id, 'down');
+                              }}
                               className="p-1 rounded text-paper-muted hover:text-paper-ink disabled:opacity-20 disabled:cursor-not-allowed"
                               title="Move topic down"
                             >
@@ -888,7 +934,11 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
 
                           {/* Checkbox */}
                           <button
-                            onClick={() => onToggleTopicCompleted(topic.id)}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleTopicCompleted(topic.id);
+                            }}
                             className="p-1 mt-0.5 sm:mt-0 text-paper-muted hover:text-emerald-600 dark:text-night-muted dark:hover:text-emerald-400 transition-colors btn-tactile shrink-0"
                             title={topic.completed ? 'Mark uncompleted' : 'Mark completed'}
                           >
@@ -901,7 +951,14 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
 
                           {/* Inline Edit Form OR Wrapped Topic Title (Requirement 7 & 9) */}
                           {isEditingThisTopic ? (
-                            <form onSubmit={(e) => handleEditTopicSubmit(topic.id, e)} className="flex items-center gap-2 flex-1 min-w-0">
+                            <form 
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleEditTopicSubmit(topic.id, e);
+                              }} 
+                              className="flex items-center gap-2 flex-1 min-w-0"
+                            >
                               <input
                                 type="text"
                                 value={editingTopicTitle}
@@ -910,8 +967,8 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                                 required
                                 className="flex-1 px-3 py-1.5 text-xs font-bold rounded-xl bg-paper-card dark:bg-night-card border border-emerald-500 text-paper-ink dark:text-night-text focus:outline-none"
                               />
-                              <button type="submit" className="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg shadow-sm">Save</button>
-                              <button type="button" onClick={() => setEditingTopicId(null)} className="px-2 py-1.5 text-xs text-paper-muted">Cancel</button>
+                              <button type="submit" onClick={(e) => e.stopPropagation()} className="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg shadow-sm">Save</button>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setEditingTopicId(null); }} className="px-2 py-1.5 text-xs text-paper-muted">Cancel</button>
                             </form>
                           ) : (
                             <div className="flex flex-col flex-1 min-w-0">
@@ -951,7 +1008,11 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                           {/* Weak / Okay / Strong Pills */}
                           <div className="flex items-center gap-1 p-1 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-[10px] font-bold">
                             <button
-                              onClick={() => onSetTopicMastery(topic.id, 'weak')}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSetTopicMastery(topic.id, 'weak');
+                              }}
                               className={`px-2 py-0.5 rounded-md transition-all ${
                                 topic.mastery === 'weak'
                                   ? 'bg-rose-600 text-white shadow-xs'
@@ -963,7 +1024,11 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                             </button>
 
                             <button
-                              onClick={() => onSetTopicMastery(topic.id, 'okay')}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSetTopicMastery(topic.id, 'okay');
+                              }}
                               className={`px-2 py-0.5 rounded-md transition-all ${
                                 topic.mastery === 'okay'
                                   ? 'bg-amber-600 text-white shadow-xs'
@@ -975,7 +1040,11 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                             </button>
 
                             <button
-                              onClick={() => onSetTopicMastery(topic.id, 'strong')}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSetTopicMastery(topic.id, 'strong');
+                              }}
                               className={`px-2 py-0.5 rounded-md transition-all ${
                                 topic.mastery === 'strong'
                                   ? 'bg-emerald-600 text-white shadow-xs'
@@ -989,7 +1058,9 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
 
                           {/* Edit Topic Name Button (Requirement 7) */}
                           <button
-                            onClick={() => {
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditingTopicId(topic.id);
                               setEditingTopicTitle(topic.title);
                             }}
@@ -1001,7 +1072,11 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
 
                           {/* + Attach Video Button */}
                           <button
-                            onClick={() => setAddingVideoTopicId(isAddingVideo ? null : topic.id)}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAddingVideoTopicId(isAddingVideo ? null : topic.id);
+                            }}
                             className="p-1.5 text-paper-muted hover:text-emerald-600 dark:text-night-muted dark:hover:text-emerald-400 rounded-lg hover:bg-paper-card dark:hover:bg-night-card transition-colors flex items-center gap-1 text-[11px] font-semibold"
                             title="Attach YouTube video to topic"
                           >
@@ -1011,7 +1086,11 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
 
                           {/* Delete Topic Button with Confirmation (Requirement 7 & 12) */}
                           <button
-                            onClick={() => setTopicToDelete(topic)}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTopicToDelete(topic);
+                            }}
                             className="p-1.5 text-paper-muted hover:text-rose-600 dark:text-night-muted dark:hover:text-rose-400 rounded-lg hover:bg-paper-card dark:hover:bg-night-card transition-colors opacity-70 group-hover:opacity-100"
                             title="Delete topic"
                           >
@@ -1053,7 +1132,10 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                                 {onRemoveTopicVideo && (
                                   <button
                                     type="button"
-                                    onClick={() => onRemoveTopicVideo(topic.id, url)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onRemoveTopicVideo(topic.id, url);
+                                    }}
                                     className="p-0.5 text-paper-muted hover:text-rose-500"
                                     title="Remove this video link"
                                   >
@@ -1069,7 +1151,11 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                       {/* Inline Form to add another YouTube link to this topic */}
                       {isAddingVideo && (
                         <form
-                          onSubmit={(e) => handleAddVideoToTopicSubmit(topic.id, e)}
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleAddVideoToTopicSubmit(topic.id, e);
+                          }}
                           className="flex items-center gap-2 pl-8 pt-1 animate-fade-slide-up"
                         >
                           <input

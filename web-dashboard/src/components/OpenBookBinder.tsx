@@ -70,6 +70,7 @@ interface OpenBookBinderProps {
   questions: PYQQuestion[];
   videos: VideoResource[];
   pdfs: PdfResource[];
+  onSelectUnit?: (unitId: string) => void;
   onToggleTopicCompleted: (topicId: string) => void;
   onSetTopicMastery: (topicId: string, mastery: TopicMastery) => void;
   onAddTopic: (topic: SyllabusTopic) => void;
@@ -101,6 +102,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   questions,
   videos,
   pdfs,
+  onSelectUnit,
   onToggleTopicCompleted,
   onSetTopicMastery,
   onAddTopic,
@@ -137,6 +139,23 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
     }
     return units[0]?.id || 'all';
   });
+
+  // Sync initialUnitId if changed from URL hash or parent
+  useEffect(() => {
+    if (initialUnitId && initialUnitId !== 'all') {
+      const found = units.find(u => u.id === initialUnitId);
+      if (found && found.id !== activeUnitId) {
+        setActiveUnitId(found.id);
+      }
+    } else if (initialUnitId === 'all' && activeUnitId !== 'all') {
+      setActiveUnitId('all');
+    }
+  }, [initialUnitId, units]);
+
+  const handleSelectUnit = (unitId: string) => {
+    setActiveUnitId(unitId);
+    onSelectUnit?.(unitId);
+  };
 
   // Weak Topics Crunch Mode Toggle
   const [isWeakOnly, setIsWeakOnly] = useState<boolean>(false);
@@ -742,7 +761,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
             <button
               type="button"
-              onClick={() => setActiveUnitId('all')}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelectUnit('all');
+              }}
               className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0 ${
                 activeUnitId === 'all'
                   ? 'bg-amber-500 text-stone-950 shadow-md font-extrabold'
@@ -755,7 +777,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
               <button
                 key={u.id}
                 type="button"
-                onClick={() => setActiveUnitId(u.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSelectUnit(u.id);
+                }}
                 className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0 ${
                   activeUnitId === u.id
                     ? 'bg-amber-500 text-stone-950 shadow-md font-extrabold'
@@ -1179,7 +1204,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                     return (
                       <div 
                         key={unit.id}
-                        onClick={() => setActiveUnitId(unit.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectUnit(unit.id);
+                        }}
                         className={`p-3 rounded-xl cursor-pointer transition-all border ${
                           isSelected 
                             ? 'border-amber-500 bg-amber-500/10 shadow-sm' 
@@ -1508,7 +1536,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
                                   <button
                                     type="button"
-                                    onClick={() => onToggleTopicCompleted(topic.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleTopicCompleted(topic.id);
+                                    }}
                                     className="text-stone-400 hover:text-emerald-500 transition-colors shrink-0"
                                     title={topic.completed ? 'Mark pending' : 'Mark completed'}
                                   >
@@ -1523,6 +1554,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                     <form 
                                       onSubmit={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         if (editingTopicTitle.trim()) {
                                           onUpdateTopicTitle?.(topic.id, editingTopicTitle.trim());
                                           setEditingTopicId(null);
@@ -1537,10 +1569,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                         onChange={(e) => setEditingTopicTitle(e.target.value)}
                                         className="flex-1 px-2 py-0.5 rounded border border-amber-500 bg-white dark:bg-stone-900 text-xs font-serif font-bold text-stone-900 dark:text-stone-100"
                                       />
-                                      <button type="submit" className="p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded" title="Save Title">
+                                      <button type="submit" onClick={(e) => e.stopPropagation()} className="p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded" title="Save Title">
                                         <Check className="w-3.5 h-3.5" />
                                       </button>
-                                      <button type="button" onClick={() => setEditingTopicId(null)} className="p-1 text-stone-400 hover:text-stone-600 rounded" title="Cancel">
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); setEditingTopicId(null); }} className="p-1 text-stone-400 hover:text-stone-600 rounded" title="Cancel">
                                         <X className="w-3.5 h-3.5" />
                                       </button>
                                     </form>
@@ -1549,7 +1581,8 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                       <span 
                                         title={topic.title}
                                         className={`font-serif font-bold break-words cursor-pointer ${topic.completed ? 'line-through opacity-60' : ''}`}
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                          e.stopPropagation();
                                           setEditingTopicId(topic.id);
                                           setEditingTopicTitle(topic.title);
                                         }}
@@ -1558,7 +1591,8 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                       </span>
                                       <button
                                         type="button"
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                          e.stopPropagation();
                                           setEditingTopicId(topic.id);
                                           setEditingTopicTitle(topic.title);
                                         }}
@@ -1572,7 +1606,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                           <button
                                             type="button"
                                             disabled={tIdx === 0}
-                                            onClick={() => handleMoveTopic(topic, 'up', cTopics)}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleMoveTopic(topic, 'up', cTopics);
+                                            }}
                                             className="p-0.5 text-stone-400 hover:text-stone-600 disabled:opacity-20"
                                             title="Move Up"
                                           >
@@ -1581,7 +1618,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                           <button
                                             type="button"
                                             disabled={tIdx === cTopics.length - 1}
-                                            onClick={() => handleMoveTopic(topic, 'down', cTopics)}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleMoveTopic(topic, 'down', cTopics);
+                                            }}
                                             className="p-0.5 text-stone-400 hover:text-stone-600 disabled:opacity-20"
                                             title="Move Down"
                                           >
@@ -1601,7 +1641,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                   <div className="flex items-center rounded-lg border border-stone-300 dark:border-stone-700 p-0.5 text-[10px] font-mono">
                                     <button
                                       type="button"
-                                      onClick={() => onSetTopicMastery(topic.id, 'weak')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSetTopicMastery(topic.id, 'weak');
+                                      }}
                                       className={`px-1.5 py-0.5 rounded font-bold transition-colors ${
                                         isWeak ? 'bg-red-500 text-white' : 'opacity-60 hover:opacity-100'
                                       }`}
@@ -1610,7 +1653,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => onSetTopicMastery(topic.id, 'okay')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSetTopicMastery(topic.id, 'okay');
+                                      }}
                                       className={`px-1.5 py-0.5 rounded font-bold transition-colors ${
                                         isOkay ? 'bg-amber-500 text-stone-950' : 'opacity-60 hover:opacity-100'
                                       }`}
@@ -1619,7 +1665,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => onSetTopicMastery(topic.id, 'strong')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSetTopicMastery(topic.id, 'strong');
+                                      }}
                                       className={`px-1.5 py-0.5 rounded font-bold transition-colors ${
                                         isStrong ? 'bg-emerald-500 text-white' : 'opacity-60 hover:opacity-100'
                                       }`}
@@ -1630,7 +1679,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
 
                                   <button
                                     type="button"
-                                    onClick={() => setExpandedTopicNoteId(isNoteOpen ? null : topic.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setExpandedTopicNoteId(isNoteOpen ? null : topic.id);
+                                    }}
                                     className="px-2 py-0.5 rounded text-[10px] font-mono font-bold border border-stone-300 dark:border-stone-700 hover:border-amber-500"
                                   >
                                     {topic.notes ? 'View Note' : '+ Note'}
@@ -1638,7 +1690,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
 
                                   <button
                                     type="button"
-                                    onClick={() => onDeleteTopic(topic.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDeleteTopic(topic.id);
+                                    }}
                                     className="p-1 text-stone-400 hover:text-red-500 transition-colors"
                                   >
                                     <Trash2 className="w-3 h-3" />
@@ -1659,7 +1714,8 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                   <div className="flex justify-end gap-2">
                                     <button
                                       type="button"
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         const noteVal = topicNoteDraft[topic.id] ?? topic.notes ?? '';
                                         const updatedTopic = { ...topic, notes: noteVal };
                                         storageService.updateTopic(updatedTopic);
@@ -1688,17 +1744,33 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                             placeholder="Topic title (e.g. Critical Section & Peterson's Algorithm)" 
                             value={newTopicTitle}
                             onChange={(e) => setNewTopicTitle(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTopic(unit.id, uIndex); }}
+                            onKeyDown={(e) => { 
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleCreateTopic(unit.id, uIndex);
+                              }
+                            }}
                             className="flex-1 px-3 py-1.5 rounded text-xs bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700"
                           />
                           <button
                             type="button"
-                            onClick={() => handleCreateTopic(unit.id, uIndex)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCreateTopic(unit.id, uIndex);
+                            }}
                             className="px-3 py-1.5 rounded bg-amber-500 text-stone-950 font-bold text-xs"
                           >
                             Add
                           </button>
-                          <button type="button" onClick={() => setAddTopicUnitId(null)} className="p-1 text-stone-400">
+                          <button 
+                            type="button" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAddTopicUnitId(null);
+                            }} 
+                            className="p-1 text-stone-400"
+                          >
                             <X className="w-4 h-4" />
                           </button>
                         </div>
@@ -1716,7 +1788,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                         </h4>
                         <button
                           type="button"
-                          onClick={() => setAddVideoUnitId(addVideoUnitId === unit.id ? null : unit.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAddVideoUnitId(addVideoUnitId === unit.id ? null : unit.id);
+                          }}
                           className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -1735,7 +1810,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                 <div className="flex items-center gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => onToggleVideoWatched(vid.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleVideoWatched(vid.id);
+                                    }}
                                     className="text-stone-400 hover:text-emerald-500"
                                   >
                                     {vid.isWatched ? (
@@ -1754,7 +1832,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                 <div className="flex items-center gap-2 shrink-0">
                                   <button
                                     type="button"
-                                    onClick={() => setInlineVideoId(isPlaying ? null : vid.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setInlineVideoId(isPlaying ? null : vid.id);
+                                    }}
                                     className="px-2 py-0.5 rounded bg-amber-500 text-stone-950 font-bold text-[10px] flex items-center gap-1"
                                   >
                                     <Play className="w-2.5 h-2.5 fill-current" />
@@ -1762,7 +1843,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => onDeleteVideo(vid.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDeleteVideo(vid.id);
+                                    }}
                                     className="p-1 text-stone-400 hover:text-red-500"
                                   >
                                     <Trash2 className="w-3 h-3" />
