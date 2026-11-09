@@ -62,9 +62,9 @@ const CUSTOM_PRESETS_KEY = 'studyos_custom_timer_presets';
 
 const DEFAULT_PRESETS: CustomTimerPreset[] = [
   { id: 'preset_pomo', name: '25m Pomodoro', hours: 0, minutes: 25, seconds: 0, isDefault: true },
+  { id: 'preset_rev', name: '30m Power Review', hours: 0, minutes: 30, seconds: 0, isDefault: true },
   { id: 'preset_deep', name: '45m Deep Study', hours: 0, minutes: 45, seconds: 0, isDefault: true },
   { id: 'preset_mock', name: '3h Mock Exam', hours: 3, minutes: 0, seconds: 0, isDefault: true },
-  { id: 'preset_rev', name: '15m Quick Revision', hours: 0, minutes: 15, seconds: 0, isDefault: true },
 ];
 
 const DEFAULT_SETTINGS: TimerSettings = {
@@ -151,10 +151,10 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
   };
 
   const handleApplyCustomTime = (h: number, m: number, s: number) => {
-    const totalSec = (Math.max(0, h) * 3600) + (Math.max(0, m) * 60) + Math.max(0, s);
-    if (totalSec < 5) {
-      onShowToast('Please set at least 5 seconds for study timer.', 'info');
-      return;
+    let totalSec = (Math.max(0, h) * 3600) + (Math.max(0, m) * 60) + Math.max(0, s);
+    if (mode === 'focus' && totalSec < 25 * 60) {
+      totalSec = 25 * 60;
+      onShowToast('Focus timer minimum duration is 25 minutes. Set to 25m.', 'info');
     }
     if (timerRef.current) clearInterval(timerRef.current);
     setIsActive(false);
@@ -163,7 +163,10 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
     setSecondsLeft(totalSec);
     persistActiveSession(null);
     setIsEditingClock(false);
-    onShowToast(`Timer set to ${h > 0 ? `${h}h ` : ''}${m}m ${s > 0 ? `${s}s` : ''}! ⏱️`, 'success');
+    const finalH = Math.floor(totalSec / 3600);
+    const finalM = Math.floor((totalSec % 3600) / 60);
+    const finalS = totalSec % 60;
+    onShowToast(`Timer set to ${finalH > 0 ? `${finalH}h ` : ''}${finalM}m ${finalS > 0 ? `${finalS}s` : ''}! ⏱️`, 'success');
   };
 
   const handleAdjustSeconds = (deltaSec: number) => {
@@ -192,13 +195,17 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
     if (timerRef.current) clearInterval(timerRef.current);
     setIsActive(false);
     setTargetEndTime(null);
-    const totalSec = (p.hours * 3600) + (p.minutes * 60) + p.seconds;
+    let totalSec = (p.hours * 3600) + (p.minutes * 60) + p.seconds;
+    if (mode === 'focus' && totalSec < 25 * 60) {
+      totalSec = 25 * 60;
+      onShowToast('Focus timer minimum duration is 25 minutes. Set to 25m.', 'info');
+    }
     setTotalDurationSeconds(totalSec);
     setSecondsLeft(totalSec);
     persistActiveSession(null);
-    setCustomHours(p.hours);
-    setCustomMinutes(p.minutes);
-    setCustomSeconds(p.seconds);
+    setCustomHours(Math.floor(totalSec / 3600));
+    setCustomMinutes(Math.floor((totalSec % 3600) / 60));
+    setCustomSeconds(totalSec % 60);
     setIsEditingClock(false);
     onShowToast(`Loaded preset "${p.name}" (${p.hours > 0 ? `${p.hours}h ` : ''}${p.minutes}m)! ⏱️`, 'info');
   };

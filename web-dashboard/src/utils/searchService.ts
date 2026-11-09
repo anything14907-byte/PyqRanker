@@ -219,7 +219,8 @@ export function buildSearchIndex(
 
     // 1. SUBJECTS
     for (const sub of subjects) {
-      const text = `${sub.name}`;
+      const subUnitTitles = sub.units?.map(u => `${u.title || ''} ${u.unitLabel || ''}`).join(' ') || '';
+      const text = `${sub.name} ${subUnitTitles}`;
       items.push({
         id: `sub-${exam.id}-${sub.id}`,
         type: 'subject',
@@ -242,7 +243,7 @@ export function buildSearchIndex(
         for (const unit of sub.units) {
           const unitDisplayName = formatUnitDisplayName(unit);
           const rawTitle = unit.title || unit.name || '';
-          const unitText = `${unitDisplayName} ${rawTitle} ${unit.unitLabel || ''}`;
+          const unitText = `${unitDisplayName} ${rawTitle} ${unit.unitLabel || ''} ${sub.name}`;
 
           items.push({
             id: `unit-${exam.id}-${sub.id}-${unit.id || unit.unit}`,
@@ -272,7 +273,7 @@ export function buildSearchIndex(
       const unit = sub?.units?.find(u => u.id === topic.unitId || u.unit === topic.unitNumber);
       const unitLabel = unit ? formatUnitDisplayName(unit) : (topic.unitLabel || `Unit ${topic.unitNumber || 1}`);
 
-      const text = `${topic.title}`;
+      const text = `${topic.title} ${topic.notes || ''} ${unitLabel} ${sub?.name || ''}`;
       items.push({
         id: `topic-${exam.id}-${topic.id}`,
         type: 'topic',

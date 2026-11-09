@@ -445,7 +445,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* + Add Subject Book */}
+          {/* + Add Subject */}
           {onOpenAddSubject && (
             <button
               type="button"
@@ -453,7 +453,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
               className="px-3.5 py-1.5 rounded-xl border border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
             >
               <Plus className="w-4 h-4 text-amber-500" />
-              <span>+ Add Subject Book</span>
+              <span>Add Subject</span>
             </button>
           )}
         </div>
@@ -479,9 +479,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
             <button
               type="button"
               onClick={onOpenAddSubject}
-              className="px-4 py-2 rounded-xl bg-amber-500 text-stone-950 font-bold text-xs hover:bg-amber-400 shadow-md transition-all active:scale-95 mt-2"
+              className="px-4 py-2 rounded-xl bg-amber-500 text-stone-950 font-bold text-xs hover:bg-amber-400 shadow-md transition-all active:scale-95 mt-2 flex items-center gap-1.5"
             >
-              + Create First Subject Book
+              <Plus className="w-4 h-4 text-stone-950" />
+              <span>Add Subject</span>
             </button>
           )}
         </div>

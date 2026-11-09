@@ -26,6 +26,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     const legacy = localStorage.getItem('pyq_ranker_theme_v1');
     if (legacy === 'light') return 'liquid-light';
+    if (legacy === 'dark') return 'liquid-dark';
+
+    // System preference fallback
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      return 'liquid-light';
+    }
     return 'liquid-dark'; // Apple Liquid Glass (Default)
   });
 
@@ -58,19 +64,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('pyq_visual_mode_v2', themeMode);
     localStorage.setItem('pyq_ranker_theme_v1', theme);
 
-    // Sync browser theme-color meta tag
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement('meta');
+    // Sync browser theme-color meta tag with active theme
+    const activeColor = theme === 'light' ? '#FAF8F5' : '#090D16';
+    const metaTags = document.querySelectorAll('meta[name="theme-color"]');
+    if (metaTags.length > 0) {
+      metaTags.forEach(tag => tag.setAttribute('content', activeColor));
+    } else {
+      const metaThemeColor = document.createElement('meta');
       metaThemeColor.setAttribute('name', 'theme-color');
+      metaThemeColor.setAttribute('content', activeColor);
       document.head.appendChild(metaThemeColor);
     }
-    const colorMap: Record<VisualMode, string> = {
-      'liquid-dark': '#090D16',
-      'liquid-light': '#F8FAFC',
-      'pro-cyber': '#030508'
-    };
-    metaThemeColor.setAttribute('content', colorMap[themeMode] || '#090D16');
   }, [themeMode, theme, liquidMotionEnabled]);
 
   const toggleTheme = () => {

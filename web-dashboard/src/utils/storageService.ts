@@ -341,6 +341,54 @@ export function formatUnitDisplayName(unit?: any): string {
 }
 
 /**
+ * Returns the exact saved unit label (e.g. "Unit 3", "Unit 4", "Module 1", "Chapter 2")
+ * NEVER auto-renumbers units based on array index!
+ */
+export function getUnitDisplayLabel(unit?: any): string {
+  if (!unit) return 'Unit';
+  if (typeof unit === 'string') {
+    const trimmed = unit.trim();
+    const match = trimmed.match(/^(?:((?:unit|module|chapter|part|section)\s*[\d\w]+)|([uU]\d+))/i);
+    if (match) return match[1] || match[2];
+    return trimmed;
+  }
+  if (unit.unitLabel && String(unit.unitLabel).trim()) {
+    return String(unit.unitLabel).trim();
+  }
+  if (unit.unitNumber !== undefined && unit.unitNumber !== null && String(unit.unitNumber).trim()) {
+    const raw = String(unit.unitNumber).trim();
+    if (/^(unit|module|chapter|section|part|ch|u)\b/i.test(raw)) return raw;
+    if (/^\d+$/.test(raw)) return `Unit ${raw}`;
+    return raw;
+  }
+  if (unit.unit !== undefined && unit.unit !== null && String(unit.unit).trim()) {
+    const raw = String(unit.unit).trim();
+    if (/^(unit|module|chapter|section|part|ch|u)\b/i.test(raw)) return raw;
+    if (/^\d+$/.test(raw)) return `Unit ${raw}`;
+    return raw;
+  }
+  const title = (unit.unitTitle || unit.title || unit.name || '').trim();
+  const match = title.match(/^(?:((?:unit|module|chapter|part|section)\s*[\d\w]+)|([uU]\d+))/i);
+  if (match) {
+    return match[1] || match[2];
+  }
+  return title || 'Unit';
+}
+
+/**
+ * Returns a compact badge label for tabs and tight UI (e.g. "Unit 3")
+ * NEVER uses array index!
+ */
+export function getUnitShortBadge(unit?: any): string {
+  const fullLabel = getUnitDisplayLabel(unit);
+  const numMatch = fullLabel.match(/\d+/);
+  if (numMatch) {
+    return `Unit ${numMatch[0]}`;
+  }
+  return fullLabel;
+}
+
+/**
  * Robust Unit Normalizer:
  * Safely recovers units whether saved as an array of objects, array of strings,
  * comma-separated string, or newline-separated text.
@@ -729,7 +777,9 @@ const FALLBACK_KEYS = {
   QUESTIONS: ['pyq_hud_questions_v2', 'pyq_questions'],
   TASKS: ['pyq_hud_tasks_v2', 'pyq_tasks'],
   VIDEOS: ['pyq_hud_videos_v2'],
-  PDFS: ['pyq_hud_pdfs_v2']
+  PDFS: ['pyq_hud_pdfs_v2'],
+  FLASHCARDS: ['pyq_flashcards', 'exam_hub_flashcards', 'studyos_flashcards'],
+  POMODORO_LOGS: ['pyq_pomodoro_logs', 'exam_hub_pomodoro_logs']
 };
 
 /**
@@ -1607,6 +1657,21 @@ export const storageService = {
           return subjectId ? parsed.filter(c => c.subjectId === subjectId) : parsed;
         }
       }
+
+      // Check legacy fallback keys if primary key is empty
+      const fallbacks = FALLBACK_KEYS.FLASHCARDS || [];
+      for (const fbKey of fallbacks) {
+        try {
+          const fbData = localStorage.getItem(fbKey);
+          if (fbData) {
+            const parsed = JSON.parse(fbData);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              this.saveFlashcards(parsed, activeExam);
+              return subjectId ? parsed.filter(c => c.subjectId === subjectId) : parsed;
+            }
+          }
+        } catch {}
+      }
     } catch (e) {
       console.warn('Error reading flashcards:', e);
     }
@@ -1639,7 +1704,7 @@ export const storageService = {
 
   reviewFlashcard(cardId: string, rating: 'hard' | 'good' | 'easy', examId?: string): Flashcard[] {
     const list = this.getFlashcards(undefined, examId);
-    const today = new Date();
+    const now = new Date();
 
     const updated = list.map(c => {
       if (c.id === cardId) {
@@ -1657,8 +1722,8 @@ export const storageService = {
           newStep = 3;
         }
 
-        const nextDate = new Date(today.getTime() + nextDays * 86400000);
-        const nextDateStr = nextDate.toISOString().split('T')[0];
+        const nextDate = new Date(now.getTime() + nextDays * 86400000);
+        const nextDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
 
         return {
           ...c,
@@ -1683,8 +1748,9 @@ export const storageService = {
 
   getDueFlashcards(subjectId?: string, examId?: string): Flashcard[] {
     const cards = this.getFlashcards(subjectId, examId);
-    const todayStr = new Date().toISOString().split('T')[0];
-    return cards.filter(c => !c.nextReviewDate || c.nextReviewDate <= todayStr);
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return cards.filter(c => !c.nextReviewDate || String(c.nextReviewDate).split('T')[0] <= todayStr);
   },
 
   // ==========================================

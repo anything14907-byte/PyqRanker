@@ -54,12 +54,15 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-  // Due flashcards
+  // Due flashcards (safe string comparison, never returns reviewed cards as due)
   const dueCards = flashcards.filter(c => {
     if (selectedSubjectId !== 'all' && c.subjectId !== selectedSubjectId) return false;
-    return !c.nextReviewDate || c.nextReviewDate <= todayStr;
+    if (!c.nextReviewDate) return true;
+    const dateStr = String(c.nextReviewDate).split('T')[0];
+    return dateStr <= todayStr;
   });
 
   const allFilteredCards = flashcards.filter(c => {
@@ -75,11 +78,11 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
     onReviewCard(activeCard.id, rating);
     setIsFlipped(false);
 
-    if (currentCardIndex >= dueCards.length - 1) {
+    if (dueCards.length <= 1) {
       setCurrentCardIndex(0);
       onShowToast('🎉 Awesome! You completed all flashcards due today!', 'success');
-    } else {
-      setCurrentCardIndex(idx => idx + 1);
+    } else if (currentCardIndex >= dueCards.length - 1) {
+      setCurrentCardIndex(0);
     }
   };
 

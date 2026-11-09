@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { 
   formatUnitDisplayName, 
+  getUnitDisplayLabel,
   extractYoutubeId, 
   getExamUrgencyColor, 
   storageService 
@@ -36,6 +37,7 @@ import {
   HelpCircle,
   X,
   ChevronDown,
+  ChevronUp,
   Zap,
   Upload,
   Eye,
@@ -72,6 +74,8 @@ interface OpenBookBinderProps {
   onSetTopicMastery: (topicId: string, mastery: TopicMastery) => void;
   onAddTopic: (topic: SyllabusTopic) => void;
   onDeleteTopic: (topicId: string) => void;
+  onUpdateTopicTitle?: (topicId: string, newTitle: string) => void;
+  onReorderTopics?: (topics: SyllabusTopic[]) => void;
   onAddUnit?: (subjectId: string, unitLabel: string, unitTitle?: string) => void;
   onRenameUnit?: (subjectId: string, unitId: string, newLabel: string, newTitle?: string) => void;
   onDeleteUnit?: (subjectId: string, unitId: string) => void;
@@ -101,6 +105,8 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   onSetTopicMastery,
   onAddTopic,
   onDeleteTopic,
+  onUpdateTopicTitle,
+  onReorderTopics,
   onAddUnit,
   onRenameUnit,
   onDeleteUnit,
@@ -226,6 +232,26 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   // Inline quick inputs per chapter
   const [addTopicUnitId, setAddTopicUnitId] = useState<string | null>(null);
   const [newTopicTitle, setNewTopicTitle] = useState('');
+
+  // Inline Topic Editing State
+  const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
+  const [editingTopicTitle, setEditingTopicTitle] = useState<string>('');
+
+  const handleMoveTopic = (topic: SyllabusTopic, direction: 'up' | 'down', unitTopics: SyllabusTopic[]) => {
+    if (!onReorderTopics) return;
+    const idx = unitTopics.findIndex(t => t.id === topic.id);
+    if (idx < 0) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= unitTopics.length) return;
+
+    const newUnitTopics = [...unitTopics];
+    const [moved] = newUnitTopics.splice(idx, 1);
+    newUnitTopics.splice(targetIdx, 0, moved);
+
+    const otherTopics = topics.filter(t => !unitTopics.some(ut => ut.id === t.id));
+    onReorderTopics([...otherTopics, ...newUnitTopics]);
+    onShowToast(`Moved "${topic.title.slice(0, 20)}" ${direction}!`, 'success');
+  };
 
   const [addVideoUnitId, setAddVideoUnitId] = useState<string | null>(null);
   const [videoTitle, setVideoTitle] = useState('');
@@ -494,11 +520,14 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
 
     setIsUploadingPdf(true);
     try {
+      const targetUnit = targetUnitId ? units.find(u => u.id === targetUnitId) : undefined;
+      const targetUnitNum = targetUnit?.unit ?? (unitIndex !== undefined ? unitIndex + 1 : undefined);
+
       const { pdfResource, predictedQuestions } = await uploadAndProcessPdfFile(
         file,
         subject.id,
         targetUnitId,
-        unitIndex !== undefined ? unitIndex + 1 : undefined,
+        targetUnitNum,
         subject.name
       );
 
@@ -510,7 +539,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
           onAddQuestion({
             ...pq,
             unitId: targetUnitId,
-            unit: unitIndex !== undefined ? unitIndex + 1 : 1
+            unit: typeof targetUnitNum === 'number' ? targetUnitNum : 1
           });
         });
       }
@@ -597,13 +626,16 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
 
   const handleCreateTopic = (unitId: string, unitIndex: number) => {
     if (!newTopicTitle.trim()) return;
+    const targetUnit = units[unitIndex] || units.find(u => u.id === unitId);
+    const unitLabel = targetUnit ? getUnitDisplayLabel(targetUnit) : `Unit ${unitIndex + 1}`;
+    const unitNum = targetUnit?.unit ?? (unitIndex + 1);
 
     const newTopic: SyllabusTopic = {
       id: `topic_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       subjectId: subject.id,
       unitId,
-      unitNumber: unitIndex + 1,
-      unitLabel: `Chapter ${unitIndex + 1}`,
+      unitNumber: unitNum,
+      unitLabel,
       title: newTopicTitle.trim(),
       completed: false,
       mastery: 'weak',
@@ -613,7 +645,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
     onAddTopic(newTopic);
     setNewTopicTitle('');
     setAddTopicUnitId(null);
-    onShowToast('Topic added to chapter! 📝', 'success');
+    onShowToast(`Topic added to ${unitLabel}! 📝`, 'success');
   };
 
   const handleCreateVideo = (unitId: string, unitIndex: number) => {
@@ -623,6 +655,8 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
       onShowToast('Please enter a valid YouTube video link', 'error');
       return;
     }
+    const targetUnit = units[unitIndex] || units.find(u => u.id === unitId);
+    const unitNum = targetUnit?.unit ?? (unitIndex + 1);
 
     const newVid: VideoResource = {
       id: `vid_${Date.now()}`,
@@ -634,7 +668,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
       isWatched: false,
       addedAt: Date.now(),
       unitId,
-      unit: unitIndex + 1
+      unit: typeof unitNum === 'number' ? unitNum : 1
     };
 
     onAddVideo(newVid);
@@ -646,6 +680,9 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
 
   const handleCreatePyq = (unitId: string, unitIndex: number) => {
     if (!pyqQuestionText.trim()) return;
+    const targetUnit = units[unitIndex] || units.find(u => u.id === unitId);
+    const unitLabel = targetUnit ? getUnitDisplayLabel(targetUnit) : `Unit ${unitIndex + 1}`;
+    const unitNum = targetUnit?.unit ?? (unitIndex + 1);
 
     const bulletsList = pyqBullets.split('\n').filter(b => b.trim().length > 0);
 
@@ -653,9 +690,9 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
       id: `pyq_custom_${Date.now()}`,
       subjectId: subject.id,
       subjectName: subject.name,
-      unit: unitIndex + 1,
-      unitTitle: units[unitIndex]?.title || 'Chapter Questions',
-      unitLabel: `Chapter ${unitIndex + 1}`,
+      unit: typeof unitNum === 'number' ? unitNum : 1,
+      unitTitle: targetUnit?.title || 'Chapter Questions',
+      unitLabel,
       unitId,
       question: pyqQuestionText.trim(),
       marks: pyqMarks,
@@ -714,7 +751,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
             >
               All Chapters ({units.length})
             </button>
-            {units.map((u, i) => (
+            {units.map((u) => (
               <button
                 key={u.id}
                 type="button"
@@ -725,7 +762,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                     : 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-300'
                 }`}
               >
-                Ch {i + 1}
+                {getUnitDisplayLabel(u)}
               </button>
             ))}
           </div>
@@ -1131,13 +1168,13 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
 
                 {/* Chapter Index List with Dotted Leaders */}
                 <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-1">
-                  {units.map((unit, idx) => {
+                  {units.map((unit) => {
                     const isSelected = activeUnitId === unit.id;
-                    const uTopics = subjectTopics.filter(t => t.unitId === unit.id || String(t.unitNumber) === String(idx + 1));
+                    const uTopics = subjectTopics.filter(t => t.unitId === unit.id || t.unitNumber === unit.unit || String(t.unitNumber) === String(unit.unit));
                     const uDone = uTopics.filter(t => t.completed).length;
-                    const uVids = subjectVideos.filter(v => v.unitId === unit.id || v.unit === (idx + 1)).length;
-                    const uPdfs = subjectPdfs.filter(p => p.unitId === unit.id || p.unit === (idx + 1)).length;
-                    const uPyqs = subjectQuestions.filter(q => q.unitId === unit.id || q.unit === (idx + 1)).length;
+                    const uVids = subjectVideos.filter(v => v.unitId === unit.id || v.unit === unit.unit).length;
+                    const uPdfs = subjectPdfs.filter(p => p.unitId === unit.id || p.unit === unit.unit).length;
+                    const uPyqs = subjectQuestions.filter(q => q.unitId === unit.id || q.unit === unit.unit).length;
 
                     return (
                       <div 
@@ -1152,7 +1189,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                         {/* Bold Chapter Title with Dotted Leaders leading to Done Count */}
                         <div className="flex items-baseline justify-between gap-1 text-sm">
                           <span className="font-extrabold tracking-tight text-amber-600 dark:text-amber-400 shrink-0">
-                            CHAPTER {String(idx + 1).padStart(2, '0')}:
+                            {getUnitDisplayLabel(unit).toUpperCase()}:
                           </span>
                           <div className="flex-1 mx-1 border-b border-dotted border-stone-400/60 dark:border-stone-600" />
                           <span className="font-mono text-xs font-bold shrink-0 opacity-90">
@@ -1290,9 +1327,9 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                             className="text-[10px] font-mono font-bold px-2 py-1 rounded bg-stone-200 dark:bg-stone-800 border border-stone-300 dark:border-stone-700"
                           >
                             <option value="" disabled>📌 Move to Chapter ▾</option>
-                            {units.map((u, i) => (
+                            {units.map((u) => (
                               <option key={u.id} value={u.id}>
-                                Ch {i + 1}: {u.title.slice(0, 20)}...
+                                {getUnitDisplayLabel(u)}: {u.title.slice(0, 20)}...
                               </option>
                             ))}
                           </select>
@@ -1313,15 +1350,15 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
               )}
 
               {/* RENDER EACH CHAPTER IN BOLD TEXTBOOK HIERARCHY */}
-              {displayedUnits.map((unit, unitIdx) => {
+              {displayedUnits.map((unit) => {
                 const uIndex = units.findIndex(u => u.id === unit.id);
-                const uNumber = String(uIndex + 1).padStart(2, '0');
+                const uLabel = getUnitDisplayLabel(unit);
 
-                // Filter nested items for this specific chapter
-                let cTopics = subjectTopics.filter(t => t.unitId === unit.id || String(t.unitNumber) === String(uIndex + 1));
-                let cVids = subjectVideos.filter(v => v.unitId === unit.id || v.unit === (uIndex + 1));
-                let cPdfs = subjectPdfs.filter(p => p.unitId === unit.id || p.unit === (uIndex + 1));
-                let cPyqs = subjectQuestions.filter(q => q.unitId === unit.id || q.unit === (uIndex + 1));
+                // Filter nested items for this specific chapter (match unit.id or saved unit number, never array index)
+                let cTopics = subjectTopics.filter(t => t.unitId === unit.id || t.unitNumber === unit.unit || String(t.unitNumber) === String(unit.unit));
+                let cVids = subjectVideos.filter(v => v.unitId === unit.id || v.unit === unit.unit);
+                let cPdfs = subjectPdfs.filter(p => p.unitId === unit.id || p.unit === unit.unit);
+                let cPyqs = subjectQuestions.filter(q => q.unitId === unit.id || q.unit === unit.unit);
 
                 // Apply Crunch Filter if active
                 if (isWeakOnly) {
@@ -1339,7 +1376,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-mono font-black tracking-widest uppercase text-amber-600 dark:text-amber-400">
-                          CHAPTER {uNumber}
+                          {uLabel.toUpperCase()}
                         </span>
                         <div className="flex items-center gap-2">
                           {/* ⚡ 2-Min Chapter Quiz Button */}
@@ -1467,12 +1504,13 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                           return (
                             <div key={topic.id} className="space-y-1">
                               <div className="flex items-baseline justify-between gap-2 text-xs py-1 hover:bg-stone-200/40 dark:hover:bg-stone-800/40 rounded px-1.5 transition-colors">
-                                {/* Checkbox + Topic Title */}
-                                <div className="flex items-center gap-2">
+                                {/* Checkbox + Topic Title or Rename Form */}
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
                                   <button
                                     type="button"
                                     onClick={() => onToggleTopicCompleted(topic.id)}
-                                    className="text-stone-400 hover:text-emerald-500 transition-colors"
+                                    className="text-stone-400 hover:text-emerald-500 transition-colors shrink-0"
+                                    title={topic.completed ? 'Mark pending' : 'Mark completed'}
                                   >
                                     {topic.completed ? (
                                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -1480,9 +1518,79 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                       <Circle className="w-4 h-4" />
                                     )}
                                   </button>
-                                  <span className={`font-serif font-bold ${topic.completed ? 'line-through opacity-60' : ''}`}>
-                                    {tIdx + 1}. {topic.title}
-                                  </span>
+
+                                  {editingTopicId === topic.id ? (
+                                    <form 
+                                      onSubmit={(e) => {
+                                        e.preventDefault();
+                                        if (editingTopicTitle.trim()) {
+                                          onUpdateTopicTitle?.(topic.id, editingTopicTitle.trim());
+                                          setEditingTopicId(null);
+                                        }
+                                      }}
+                                      className="flex items-center gap-1.5 flex-1 min-w-0"
+                                    >
+                                      <input
+                                        type="text"
+                                        autoFocus
+                                        value={editingTopicTitle}
+                                        onChange={(e) => setEditingTopicTitle(e.target.value)}
+                                        className="flex-1 px-2 py-0.5 rounded border border-amber-500 bg-white dark:bg-stone-900 text-xs font-serif font-bold text-stone-900 dark:text-stone-100"
+                                      />
+                                      <button type="submit" className="p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded" title="Save Title">
+                                        <Check className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button type="button" onClick={() => setEditingTopicId(null)} className="p-1 text-stone-400 hover:text-stone-600 rounded" title="Cancel">
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    </form>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5 flex-1 min-w-0 group/topic">
+                                      <span 
+                                        title={topic.title}
+                                        className={`font-serif font-bold break-words cursor-pointer ${topic.completed ? 'line-through opacity-60' : ''}`}
+                                        onClick={() => {
+                                          setEditingTopicId(topic.id);
+                                          setEditingTopicTitle(topic.title);
+                                        }}
+                                      >
+                                        {tIdx + 1}. {topic.title}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingTopicId(topic.id);
+                                          setEditingTopicTitle(topic.title);
+                                        }}
+                                        className="opacity-0 group-hover/topic:opacity-100 p-0.5 text-stone-400 hover:text-amber-500 transition-opacity"
+                                        title="Rename topic"
+                                      >
+                                        <Edit3 className="w-3 h-3" />
+                                      </button>
+                                      {onReorderTopics && (
+                                        <div className="opacity-0 group-hover/topic:opacity-100 flex items-center gap-0.5 transition-opacity">
+                                          <button
+                                            type="button"
+                                            disabled={tIdx === 0}
+                                            onClick={() => handleMoveTopic(topic, 'up', cTopics)}
+                                            className="p-0.5 text-stone-400 hover:text-stone-600 disabled:opacity-20"
+                                            title="Move Up"
+                                          >
+                                            <ChevronUp className="w-3 h-3" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={tIdx === cTopics.length - 1}
+                                            onClick={() => handleMoveTopic(topic, 'down', cTopics)}
+                                            className="p-0.5 text-stone-400 hover:text-stone-600 disabled:opacity-20"
+                                            title="Move Down"
+                                          >
+                                            <ChevronDown className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* Dotted Leader Lines */}
@@ -1773,9 +1881,9 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                   value={unit.id}
                                   className="text-[10px] font-mono font-bold px-1.5 py-1 rounded bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700"
                                 >
-                                  {units.map((u, i) => (
+                                  {units.map((u) => (
                                     <option key={u.id} value={u.id}>
-                                      Ch {i + 1}: {u.title.slice(0, 18)}...
+                                      {getUnitDisplayLabel(u)}: {u.title.slice(0, 18)}...
                                     </option>
                                   ))}
                                 </select>
@@ -1784,7 +1892,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                   type="button"
                                   onClick={() => onDeletePdf(pdf.id)}
                                   className="p-1 text-stone-400 hover:text-red-500"
-                                  title="Delete PDF"
+                                  title="Delete Document"
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </button>
@@ -1798,7 +1906,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                       {addPdfUnitId === unit.id && (
                         <div className="p-3.5 rounded-xl bg-stone-200/90 dark:bg-stone-900 border-2 border-dashed border-amber-500/50 space-y-3">
                           <div className="flex items-center justify-between text-xs font-mono font-bold text-amber-600 dark:text-amber-400">
-                            <span>Upload PDF to IndexedDB or Paste Notes</span>
+                            <span>Upload PDF or Image Notes to IndexedDB</span>
                             <button type="button" onClick={() => setAddPdfUnitId(null)} className="p-1 text-stone-400">
                               <X className="w-4 h-4" />
                             </button>
@@ -1808,11 +1916,11 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                             {/* File Upload Button */}
                             <label className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer hover:bg-amber-400 transition-colors shadow-sm">
                               <Upload className="w-4 h-4" />
-                              <span>{isUploadingPdf ? 'Storing in IndexedDB...' : 'Choose PDF File'}</span>
+                              <span>{isUploadingPdf ? 'Storing in IndexedDB...' : 'Choose PDF or Image File'}</span>
                               <input 
                                 type="file" 
-                                accept=".pdf,application/pdf" 
-                                onChange={(e) => handleFileUpload(e, unit.id, uIndex)}
+                                accept=".pdf,application/pdf,image/png,image/jpeg,image/webp,image/jpg" 
+                                onChange={(e) => handleFileUpload(e, unit.id)}
                                 disabled={isUploadingPdf}
                                 className="hidden" 
                               />
@@ -1848,7 +1956,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                   extractedText: pdfTextSnippet.trim() || 'Chapter summary text & notes.',
                                   summary: 'Dossier summary for this unit.',
                                   unitId: unit.id,
-                                  unit: uIndex + 1
+                                  unit: unit.unit ?? (uIndex + 1)
                                 };
                                 onAddPdf(newPdf);
                                 setPdfFileName('');

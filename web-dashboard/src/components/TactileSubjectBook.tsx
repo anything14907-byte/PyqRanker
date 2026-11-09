@@ -10,7 +10,7 @@ import {
   ChevronRight, 
   Palette
 } from 'lucide-react';
-import { formatUnitDisplayName, getExamUrgencyColor } from '../utils/storageService';
+import { formatUnitDisplayName, getUnitDisplayLabel, getUnitShortBadge, getExamUrgencyColor } from '../utils/storageService';
 
 interface TactileSubjectBookProps {
   subject: SubjectMeta;
@@ -367,7 +367,7 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
               }}
               title={`Open ${formatUnitDisplayName(u)}`}
             >
-              <span>Ch {uIdx + 1}</span>
+              <span>{getUnitShortBadge(u)}</span>
             </button>
           ))}
           {units.length > 5 && (

@@ -32,6 +32,16 @@ export const BackupModal: React.FC<BackupModalProps> = ({
   });
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [lastBackupTime, setLastBackupTime] = useState<string>(() => {
+    const ts = localStorage.getItem('pyq_last_backup_export_ts');
+    if (ts) {
+      const d = new Date(Number(ts));
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      }
+    }
+    return 'Never backed up yet';
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -45,7 +55,10 @@ export const BackupModal: React.FC<BackupModalProps> = ({
     setIsExporting(true);
     try {
       await indexedDbService.exportCompleteBackup();
-      localStorage.setItem('pyq_last_backup_export_ts', String(Date.now()));
+      const nowTs = Date.now();
+      localStorage.setItem('pyq_last_backup_export_ts', String(nowTs));
+      const nowStr = new Date(nowTs).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      setLastBackupTime(nowStr);
       onShowToast('Single-file backup exported successfully! 📦', 'success');
     } catch (err: any) {
       onShowToast(`Export failed: ${err.message}`, 'error');
@@ -150,6 +163,12 @@ export const BackupModal: React.FC<BackupModalProps> = ({
           <p className="text-[11px] text-paper-muted dark:text-night-muted leading-relaxed">
             Data survives page refreshes and browser restarts. Use the buttons below to export a single file backup to keep on your computer or phone.
           </p>
+
+          {/* Visible Last Backed Up Info */}
+          <div className="flex items-center justify-between text-[11px] font-mono text-paper-muted dark:text-night-muted pt-2 border-t border-paper-border dark:border-night-border">
+            <span>Last backed up:</span>
+            <span className="font-bold text-paper-ink dark:text-night-text">{lastBackupTime}</span>
+          </div>
         </div>
 
         {/* Action Buttons */}

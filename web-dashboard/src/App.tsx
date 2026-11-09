@@ -109,6 +109,26 @@ function DashboardContent() {
     return () => window.removeEventListener('pyq-app-update-available', handleUpdate);
   }, [showToast]);
 
+  // Global Keyboard Shortcuts: 'N' opens note/chapter dossier
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName) || (e.target as HTMLElement)?.isContentEditable) {
+        return;
+      }
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        if (currentView !== 'syllabus' && activeSubjectId) {
+          setCurrentView('syllabus');
+          showToast('Opened Chapter Dossier & Notes (Shortcut: N) 📝', 'info');
+        } else {
+          showToast('Chapter Dossier & Notes active (Shortcut: N) 📝', 'info');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [currentView, activeSubjectId, showToast]);
+
   // 🚨 CRITICAL: DEEP RECOVERY OF ALL PREVIOUSLY UPLOADED PDFs ACROSS LOCALSTORAGE & INDEXEDDB
   useEffect(() => {
     let isMounted = true;
@@ -766,6 +786,8 @@ function DashboardContent() {
               onSetTopicMastery={handleSetTopicMastery}
               onAddTopic={handleAddTopic}
               onDeleteTopic={handleDeleteTopic}
+              onUpdateTopicTitle={handleUpdateTopicTitle}
+              onReorderTopics={handleReorderTopics}
               onAddUnit={handleAddUnit}
               onRenameUnit={handleRenameUnit}
               onDeleteUnit={handleDeleteUnit}

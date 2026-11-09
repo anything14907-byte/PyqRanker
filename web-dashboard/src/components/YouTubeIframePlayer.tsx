@@ -105,6 +105,9 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
           if (videoItemIdRef.current) {
             storageService.saveVideoPlaybackPosition(videoItemIdRef.current, t);
           }
+          try {
+            localStorage.setItem('pyq_vid_pos_' + videoIdRef.current, String(Math.floor(t)));
+          } catch {}
           setCurrentTimeDisplay(t);
         }
       } catch (err) {
@@ -113,7 +116,7 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
     }
   };
 
-  // Start 5-second interval while playing
+  // Start 2-second interval while playing for instant resume position tracking
   const startPlayingInterval = () => {
     stopPlayingInterval();
     intervalRef.current = setInterval(() => {
@@ -126,6 +129,9 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
             if (videoItemIdRef.current) {
               storageService.saveVideoPlaybackPosition(videoItemIdRef.current, t);
             }
+            try {
+              localStorage.setItem('pyq_vid_pos_' + videoIdRef.current, String(Math.floor(t)));
+            } catch {}
             setCurrentTimeDisplay(t);
 
             // Automatic 90% watched check
@@ -139,7 +145,7 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
           // ignore
         }
       }
-    }, 5000);
+    }, 2000);
   };
 
   const stopPlayingInterval = () => {
@@ -154,9 +160,11 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
     let isDisposed = false;
 
     // Determine initial start position
+    const localDirect = Number(localStorage.getItem('pyq_vid_pos_' + videoId)) || 0;
     const savedPos = storageService.getVideoPlaybackPosition(videoId) || 
-                     storageService.getVideoPlaybackPosition(videoItemId);
-    const startSec = savedPos > 2 ? Math.max(0, Math.floor(savedPos - 2)) : 0;
+                     storageService.getVideoPlaybackPosition(videoItemId) ||
+                     localDirect;
+    const startSec = savedPos > 2 ? Math.max(0, Math.floor(savedPos - 2)) : (savedPos > 0 ? Math.floor(savedPos) : 0);
     if (startSec > 0) {
       setResumedFromSeconds(startSec);
     }
@@ -187,6 +195,11 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
           onReady: (event: any) => {
             if (isDisposed) return;
             isPlayerReadyRef.current = true;
+            if (startSec > 0) {
+              try {
+                event.target.seekTo(startSec, true);
+              } catch (e) {}
+            }
             try {
               const iframe = event.target.getIframe();
               if (iframe) {

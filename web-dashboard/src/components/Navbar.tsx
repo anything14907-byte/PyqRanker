@@ -102,22 +102,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </nav>
 
-        {/* RIGHT: High-Precision Luxury Controls (+ New Book, 💾 Backup, ☀️/🌙 Studio Lamp Switch) */}
+        {/* RIGHT: High-Precision Luxury Controls (💾 Backup, ☀️/🌙 Studio Lamp Switch) */}
         <div className="flex items-center gap-2 shrink-0">
           
-          {/* + New Book Button (Single Plus Icon) */}
-          {onOpenAddSubject && (
-            <button
-              type="button"
-              onClick={onOpenAddSubject}
-              className="px-3 py-1.5 rounded-xl border border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold transition-all flex items-center gap-1.5 shadow-xs active:scale-95 text-xs whitespace-nowrap"
-              title="Create a new 3D subject volume"
-            >
-              <Plus className="w-3.5 h-3.5 text-amber-500" />
-              <span className="whitespace-nowrap">New Book</span>
-            </button>
-          )}
-
           {/* 💾 Consolidated Single Backup Button */}
           <button
             type="button"
