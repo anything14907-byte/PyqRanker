@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Play, RotateCcw, X } from 'lucide-react';
 import { storageService } from '../utils/storageService';
 
 export interface YouTubeIframePlayerProps {
@@ -66,6 +67,18 @@ function loadYouTubeIframeApi(): Promise<any> {
   return ytApiPromise;
 }
 
+const getSavedPosition = (vidId: string, itemId?: string): number => {
+  try {
+    const localDirect = Number(localStorage.getItem('pyq_vid_pos_' + vidId)) || 0;
+    const sPos = storageService.getVideoPlaybackPosition(vidId) || 
+                 (itemId ? storageService.getVideoPlaybackPosition(itemId) : 0) ||
+                 localDirect;
+    return Number.isFinite(sPos) && sPos > 2 ? Math.floor(sPos) : 0;
+  } catch {
+    return 0;
+  }
+};
+
 export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.memo(({
   videoId,
   videoItemId,
@@ -86,53 +99,91 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
   const videoItemIdRef = useRef<string>(videoItemId);
   const isWatchedRef = useRef<boolean>(isWatched);
 
-  // Resume position UI state
-  const [resumedFromSeconds, setResumedFromSeconds] = useState<number>(0);
-  const [currentTimeDisplay, setCurrentTimeDisplay] = useState<number>(0);
+  // Resume overlay and position UI state
+  const initialSaved = getSavedPosition(videoId, videoItemId);
+  const [savedTimestamp, setSavedTimestamp] = useState<number>(initialSaved);
+  const [showOverlay, setShowOverlay] = useState<boolean>(initialSaved > 2);
+  const [, setCurrentTimeDisplay] = useState<number>(initialSaved);
 
   // Keep refs fresh without triggering re-renders
   videoIdRef.current = videoId;
   videoItemIdRef.current = videoItemId;
   isWatchedRef.current = isWatched;
 
-  // Save current time helper
-  const saveCurrentPlaybackTime = () => {
+  // Save current playback time helper (saves to storageService & localStorage)
+  const saveCurrentPlaybackTime = useCallback((): number | null => {
     if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
       try {
         const t = playerRef.current.getCurrentTime();
-        if (Number.isFinite(t) && t >= 0) {
-          storageService.saveVideoPlaybackPosition(videoIdRef.current, t);
-          if (videoItemIdRef.current) {
-            storageService.saveVideoPlaybackPosition(videoItemIdRef.current, t);
+        if (typeof t === 'number' && Number.isFinite(t) && t >= 0) {
+          const floored = Math.floor(t);
+          const currentVidId = videoIdRef.current;
+          const currentItemId = videoItemIdRef.current;
+
+          if (currentVidId) {
+            storageService.saveVideoPlaybackPosition(currentVidId, floored);
+            try {
+              localStorage.setItem('pyq_vid_pos_' + currentVidId, String(floored));
+            } catch {}
           }
-          try {
-            localStorage.setItem('pyq_vid_pos_' + videoIdRef.current, String(Math.floor(t)));
-          } catch {}
-          setCurrentTimeDisplay(t);
+          if (currentItemId && currentItemId !== currentVidId) {
+            storageService.saveVideoPlaybackPosition(currentItemId, floored);
+            try {
+              localStorage.setItem('pyq_vid_pos_' + currentItemId, String(floored));
+            } catch {}
+          }
+
+          setCurrentTimeDisplay(floored);
+          if (floored > 2) {
+            setSavedTimestamp(floored);
+          }
+          return floored;
         }
       } catch (err) {
         // Player not ready or cross-origin
       }
     }
-  };
+    return null;
+  }, []);
 
-  // Start 2-second interval while playing for instant resume position tracking
-  const startPlayingInterval = () => {
+  // Stop 2-second interval
+  const stopPlayingInterval = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  // Start 2-second interval while playing for persistent position tracking
+  const startPlayingInterval = useCallback(() => {
     stopPlayingInterval();
     intervalRef.current = setInterval(() => {
       if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
         try {
           const t = playerRef.current.getCurrentTime();
           const d = playerRef.current.getDuration();
-          if (Number.isFinite(t) && t >= 0) {
-            storageService.saveVideoPlaybackPosition(videoIdRef.current, t);
-            if (videoItemIdRef.current) {
-              storageService.saveVideoPlaybackPosition(videoItemIdRef.current, t);
+          if (typeof t === 'number' && Number.isFinite(t) && t >= 0) {
+            const floored = Math.floor(t);
+            const currentVidId = videoIdRef.current;
+            const currentItemId = videoItemIdRef.current;
+
+            if (currentVidId) {
+              storageService.saveVideoPlaybackPosition(currentVidId, floored);
+              try {
+                localStorage.setItem('pyq_vid_pos_' + currentVidId, String(floored));
+              } catch {}
             }
-            try {
-              localStorage.setItem('pyq_vid_pos_' + videoIdRef.current, String(Math.floor(t)));
-            } catch {}
-            setCurrentTimeDisplay(t);
+            if (currentItemId && currentItemId !== currentVidId) {
+              storageService.saveVideoPlaybackPosition(currentItemId, floored);
+              try {
+                localStorage.setItem('pyq_vid_pos_' + currentItemId, String(floored));
+              } catch {}
+            }
+
+            setCurrentTimeDisplay(floored);
+            if (floored > 2) {
+              setSavedTimestamp(floored);
+            }
 
             // Automatic 90% watched check
             if (d > 0 && (t / d) >= 0.90 && !isWatchedRef.current) {
@@ -146,33 +197,82 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
         }
       }
     }, 2000);
+  }, [stopPlayingInterval, onToggleWatched, onShowToast]);
+
+  // Resume playback from saved timestamp
+  const handleResume = () => {
+    setShowOverlay(false);
+    const targetTime = savedTimestamp > 2 ? savedTimestamp : 0;
+    if (playerRef.current) {
+      try {
+        if (typeof playerRef.current.seekTo === 'function') {
+          playerRef.current.seekTo(targetTime, true);
+        }
+        if (typeof playerRef.current.playVideo === 'function') {
+          playerRef.current.playVideo();
+        }
+      } catch (e) {
+        console.warn('Error starting playback on resume:', e);
+      }
+    }
+    startPlayingInterval();
+    onShowToast(`Resumed playback from ${formatSecondsToTime(targetTime)}`, 'info');
   };
 
-  const stopPlayingInterval = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+  // Start over from beginning (00:00)
+  const handleStartOver = () => {
+    setShowOverlay(false);
+    setSavedTimestamp(0);
+    setCurrentTimeDisplay(0);
+
+    const vId = videoIdRef.current;
+    const vItemId = videoItemIdRef.current;
+
+    storageService.saveVideoPlaybackPosition(vId, 0);
+    if (vItemId) {
+      storageService.saveVideoPlaybackPosition(vItemId, 0);
     }
+    try {
+      localStorage.removeItem('pyq_vid_pos_' + vId);
+      if (vItemId) {
+        localStorage.removeItem('pyq_vid_pos_' + vItemId);
+      }
+    } catch {}
+
+    if (playerRef.current) {
+      try {
+        if (typeof playerRef.current.seekTo === 'function') {
+          playerRef.current.seekTo(0, true);
+        }
+        if (typeof playerRef.current.playVideo === 'function') {
+          playerRef.current.playVideo();
+        }
+      } catch (e) {
+        console.warn('Error restarting playback:', e);
+      }
+    }
+    startPlayingInterval();
+    onShowToast('Started lecture from the beginning (00:00).', 'info');
   };
 
   // 1. CREATE PLAYER ONCE AND ATTACH EVENT LISTENERS
   useEffect(() => {
     let isDisposed = false;
 
-    // Determine initial start position
-    const localDirect = Number(localStorage.getItem('pyq_vid_pos_' + videoId)) || 0;
-    const savedPos = storageService.getVideoPlaybackPosition(videoId) || 
-                     storageService.getVideoPlaybackPosition(videoItemId) ||
-                     localDirect;
-    const startSec = savedPos > 2 ? Math.max(0, Math.floor(savedPos - 2)) : (savedPos > 0 ? Math.floor(savedPos) : 0);
-    if (startSec > 0) {
-      setResumedFromSeconds(startSec);
+    // Check saved position for this video
+    const startSec = getSavedPosition(videoId, videoItemId);
+    if (startSec > 2) {
+      setSavedTimestamp(startSec);
+      setShowOverlay(true);
+    } else {
+      setSavedTimestamp(0);
+      setShowOverlay(false);
     }
 
     loadYouTubeIframeApi().then(YT => {
       if (isDisposed || !mountRef.current || !YT || !YT.Player) return;
 
-      // Create a clean inner div for YouTube API to replace
+      // Clean inner div for YouTube API to mount
       mountRef.current.innerHTML = '';
       const childDiv = document.createElement('div');
       childDiv.id = `yt-player-slot-${Date.now()}`;
@@ -183,8 +283,8 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
       playerRef.current = new YT.Player(childDiv, {
         videoId: videoId,
         playerVars: {
-          autoplay: 1,
-          start: startSec,
+          autoplay: 0, // Keep paused so student can see the clear overlay when saved timestamp exists
+          start: startSec > 0 ? startSec : 0,
           rel: 0,
           modestbranding: 1,
           playsinline: 1, // iOS / mobile browser inline playback
@@ -198,6 +298,7 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
             if (startSec > 0) {
               try {
                 event.target.seekTo(startSec, true);
+                event.target.pauseVideo();
               } catch (e) {}
             }
             try {
@@ -217,11 +318,18 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
             if (isDisposed) return;
             const state = event.data;
             if (state === YT.PlayerState.PLAYING) {
+              setShowOverlay(false);
               startPlayingInterval();
             } else if (state === YT.PlayerState.PAUSED) {
               stopPlayingInterval();
-              saveCurrentPlaybackTime();
+              const savedSec = saveCurrentPlaybackTime();
+              const pos = savedSec ?? getSavedPosition(videoIdRef.current, videoItemIdRef.current);
+              if (pos > 2) {
+                setSavedTimestamp(pos);
+                setShowOverlay(true);
+              }
             } else if (state === YT.PlayerState.ENDED) {
+              setShowOverlay(false);
               stopPlayingInterval();
               saveCurrentPlaybackTime();
               if (!isWatchedRef.current) {
@@ -234,19 +342,32 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
       });
     });
 
-    // Event listeners for window/tab switching and page unload
+    // Event listeners for window/tab switching, backgrounding, and page unload
+    // Saves timestamp on visibilitychange and pagehide events
     const handleVisibilityChange = () => {
+      saveCurrentPlaybackTime();
       if (document.hidden) {
-        saveCurrentPlaybackTime();
         stopPlayingInterval();
+      } else {
+        if (playerRef.current && typeof playerRef.current.getPlayerState === 'function') {
+          try {
+            if (playerRef.current.getPlayerState() === 1) { // 1 = PLAYING
+              startPlayingInterval();
+            }
+          } catch (e) {}
+        }
       }
+    };
+
+    const handlePageHide = () => {
+      saveCurrentPlaybackTime();
     };
 
     const handleBeforeUnload = () => {
       saveCurrentPlaybackTime();
     };
 
-    const handlePageHide = () => {
+    const handleFreeze = () => {
       saveCurrentPlaybackTime();
     };
 
@@ -255,8 +376,9 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('freeze', handleFreeze);
     window.addEventListener('blur', handleWindowBlur);
 
     return () => {
@@ -264,8 +386,9 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
       stopPlayingInterval();
       saveCurrentPlaybackTime();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('freeze', handleFreeze);
       window.removeEventListener('blur', handleWindowBlur);
 
       if (playerRef.current && typeof playerRef.current.destroy === 'function') {
@@ -278,29 +401,47 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
         isPlayerReadyRef.current = false;
       }
     };
-  }, []); // Mounted once per active player lifetime
+  }, [videoId, videoItemId, saveCurrentPlaybackTime, startPlayingInterval, stopPlayingInterval, onToggleWatched]);
 
   // 2. SWITCH VIDEO ON EXISTING PLAYER WITHOUT DESTROYING IFRAME
   useEffect(() => {
     if (!isPlayerReadyRef.current || !playerRef.current) return;
 
-    // Check if the videoId actually changed
-    const savedPos = storageService.getVideoPlaybackPosition(videoId) || 
-                     storageService.getVideoPlaybackPosition(videoItemId);
-    const startSec = savedPos > 2 ? Math.max(0, Math.floor(savedPos - 2)) : 0;
-    setResumedFromSeconds(startSec);
+    // Save previous video position before switching
+    saveCurrentPlaybackTime();
+    stopPlayingInterval();
 
-    try {
-      if (typeof playerRef.current.loadVideoById === 'function') {
-        playerRef.current.loadVideoById({
-          videoId: videoId,
-          startSeconds: startSec
-        });
-      }
-    } catch (err) {
-      // player might be busy
+    const startSec = getSavedPosition(videoId, videoItemId);
+    setSavedTimestamp(startSec);
+
+    if (startSec > 2) {
+      setShowOverlay(true);
+      try {
+        if (typeof playerRef.current.cueVideoById === 'function') {
+          playerRef.current.cueVideoById({
+            videoId: videoId,
+            startSeconds: startSec
+          });
+        } else if (typeof playerRef.current.loadVideoById === 'function') {
+          playerRef.current.loadVideoById({
+            videoId: videoId,
+            startSeconds: startSec
+          });
+          playerRef.current.pauseVideo();
+        }
+      } catch (err) {}
+    } else {
+      setShowOverlay(false);
+      try {
+        if (typeof playerRef.current.loadVideoById === 'function') {
+          playerRef.current.loadVideoById({
+            videoId: videoId,
+            startSeconds: 0
+          });
+        }
+      } catch (err) {}
     }
-  }, [videoId, videoItemId]);
+  }, [videoId, videoItemId, saveCurrentPlaybackTime, stopPlayingInterval]);
 
   // 3. HANDLE VIEW VISIBILITY (WHEN SWITCHING TABS INSIDE THE APP)
   useEffect(() => {
@@ -314,8 +455,14 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
           // ignore
         }
       }
+    } else {
+      // Returned to view: refresh saved timestamp from storage
+      const sPos = getSavedPosition(videoIdRef.current, videoItemIdRef.current);
+      if (sPos > 2) {
+        setSavedTimestamp(sPos);
+      }
     }
-  }, [isViewActive]);
+  }, [isViewActive, saveCurrentPlaybackTime, stopPlayingInterval]);
 
   // 4. HANDLE PROGRAMMATIC SEEK (E.G. CLICKING NOTES TIMESTAMP)
   useEffect(() => {
@@ -324,7 +471,8 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
         try {
           playerRef.current.seekTo(seekTimestampSeconds, true);
           playerRef.current.playVideo();
-          setResumedFromSeconds(0);
+          setShowOverlay(false);
+          setSavedTimestamp(seekTimestampSeconds);
         } catch (e) {
           // ignore
         }
@@ -333,46 +481,88 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
     }
   }, [seekTimestampSeconds, onClearSeek]);
 
-  // Start Over handler
-  const handleStartOver = () => {
-    if (isPlayerReadyRef.current && playerRef.current && typeof playerRef.current.seekTo === 'function') {
-      try {
-        playerRef.current.seekTo(0, true);
-        playerRef.current.playVideo();
-      } catch (e) {
-        // ignore
-      }
-    }
-    storageService.saveVideoPlaybackPosition(videoId, 0);
-    storageService.saveVideoPlaybackPosition(videoItemId, 0);
-    setResumedFromSeconds(0);
-    onShowToast('Rewound video to beginning (00:00).', 'info');
-  };
-
   return (
     <div className="space-y-3">
       {/* Player Frame Container (Never reloaded or recreated) */}
-      <div className="aspect-video w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-black shadow-lg relative border border-paper-border dark:border-night-border">
+      <div className="aspect-video w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-black shadow-lg relative border border-paper-border dark:border-night-border group">
         <div ref={mountRef} className="w-full h-full" />
+
+        {/* Clear Overlay on Paused Video with Resume Button & Start Over Link */}
+        {showOverlay && savedTimestamp > 2 && (
+          <div 
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-[2px] transition-all duration-300 p-4 sm:p-6 text-center select-none"
+            style={{ pointerEvents: 'auto' }}
+          >
+            {/* Dismiss button to inspect frame/slide if desired */}
+            <button
+              type="button"
+              onClick={() => setShowOverlay(false)}
+              className="absolute top-3 right-3 p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Dismiss overlay to view video frame"
+              aria-label="Dismiss overlay"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Pulse play badge */}
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mb-3 sm:mb-4 text-amber-400 shadow-lg shadow-amber-500/20">
+              <Play className="w-6 h-6 fill-amber-400 ml-0.5" />
+            </div>
+
+            {/* Video Context */}
+            <div className="max-w-md space-y-1 mb-4 sm:mb-5 px-3">
+              <p className="text-xs sm:text-sm font-medium text-slate-300">
+                Paused lecture position
+              </p>
+              <p className="text-sm sm:text-base font-semibold text-white/95 line-clamp-1">
+                {videoTitle}
+              </p>
+            </div>
+
+            {/* Single primary button: "Resume from 12:34" */}
+            <button
+              type="button"
+              onClick={handleResume}
+              className="px-6 py-3 sm:px-8 sm:py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-extrabold text-sm sm:text-base flex items-center gap-2.5 shadow-xl shadow-amber-500/30 transition-all cursor-pointer focus:outline-none focus:ring-4 focus:ring-amber-500/40"
+            >
+              <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-slate-950" />
+              <span>Resume from {formatSecondsToTime(savedTimestamp)}</span>
+            </button>
+
+            {/* Small "Start over" text link */}
+            <button
+              type="button"
+              onClick={handleStartOver}
+              className="mt-3.5 text-xs sm:text-sm text-slate-400 hover:text-white underline underline-offset-4 decoration-slate-600 hover:decoration-white transition-colors cursor-pointer focus:outline-none"
+            >
+              Start over
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Playback Status Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs">
         <div className="flex items-center gap-2 flex-wrap">
-          {resumedFromSeconds > 0 && (
-            <span className="px-2.5 py-1 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 font-mono font-bold flex items-center gap-1.5 border border-cyan-500/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
-              <span>Resume from {formatSecondsToTime(resumedFromSeconds)}</span>
-            </span>
+          {savedTimestamp > 2 && (
+            <button
+              onClick={handleResume}
+              className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 font-mono font-bold flex items-center gap-1.5 border border-amber-500/30 transition-colors cursor-pointer"
+              title={`Resume from ${formatSecondsToTime(savedTimestamp)}`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span>Resume from {formatSecondsToTime(savedTimestamp)}</span>
+            </button>
           )}
 
-          {resumedFromSeconds > 0 && (
+          {savedTimestamp > 2 && (
             <button
               onClick={handleStartOver}
-              className="px-2.5 py-1 rounded-xl border border-paper-border dark:border-night-border text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card font-semibold btn-tactile flex items-center gap-1"
+              className="px-2.5 py-1 rounded-xl border border-paper-border dark:border-night-border text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card font-semibold btn-tactile flex items-center gap-1 cursor-pointer"
               title="Start over from beginning"
             >
-              ↺ Start over
+              <RotateCcw className="w-3 h-3" />
+              <span>Start over</span>
             </button>
           )}
 
