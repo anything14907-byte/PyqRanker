@@ -1,17 +1,17 @@
 {
-  "name": "Study OS — College Exam & Academic Hub",
+  "name": "Study OS — Exam Prep Command Center",
   "short_name": "Study OS",
-  "description": "Smart University PYQ Matcher, Syllabus Tracker, Pomodoro Focus Timer & Exam Command Center",
+  "description": "Track your syllabus, study with spaced repetition flashcards, manage notes, and prepare for university exams.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#06090E",
-  "theme_color": "#00E599",
+  "background_color": "#090D16",
+  "theme_color": "#090D16",
   "orientation": "portrait-primary",
   "icons": [
     {
       "src": "./icon.svg",
-      "sizes": "any",
+      "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
