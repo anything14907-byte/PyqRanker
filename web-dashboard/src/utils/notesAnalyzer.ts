@@ -664,11 +664,15 @@ export async function runOcrOnScannedPdf(
 ): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '4.10.38'}/pdf.worker.min.mjs`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/build/pdf.worker.min.mjs`;
   }
 
   const arrayBuffer = await file.arrayBuffer();
-  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+  const loadingTask = pdfjsLib.getDocument({
+    data: arrayBuffer,
+    cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/cmaps/`,
+    cMapPacked: true,
+  });
   const pdf = await loadingTask.promise;
   const numPages = Math.min(pdf.numPages, 10); // Process up to 10 pages for browser performance
   let combinedOcrText = '';

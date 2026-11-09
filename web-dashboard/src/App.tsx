@@ -58,6 +58,7 @@ function DashboardContent() {
     return localStorage.getItem('exam_hub_v3_active_subject') || subjects[0]?.id || 'os';
   });
   const [activeUnitId, setActiveUnitId] = useState<string>('all');
+  const [activePdfIdForReader, setActivePdfIdForReader] = useState<string | undefined>(undefined);
   const [highlightedTopicId, setHighlightedTopicId] = useState<string | undefined>(undefined);
 
   // Redirect 'pyqs' view to 'syllabus' if previously selected
@@ -756,6 +757,7 @@ function DashboardContent() {
             <OpenBookBinder
               subject={activeSubject}
               initialUnitId={activeUnitId}
+              initialPdfId={activePdfIdForReader}
               topics={topics}
               questions={questions}
               videos={videos}
@@ -777,7 +779,10 @@ function DashboardContent() {
               onToggleQuestionMastered={handleToggleMastered}
               onSaveQuestionAnswer={handleSaveAnswer}
               onAddFlashcard={handleAddFlashcard}
-              onBackToShelf={() => setCurrentView('today')}
+              onBackToShelf={() => {
+                setActivePdfIdForReader(undefined);
+                setCurrentView('today');
+              }}
               onShowToast={showToast}
             />
           ) : (
@@ -849,6 +854,7 @@ function DashboardContent() {
             onUpdatePdf={handleUpdatePdf}
             onOpenPdfInReader={(pdf) => {
               handleSelectSubject(pdf.subjectId, pdf.unitId);
+              setActivePdfIdForReader(pdf.id);
               setCurrentView('syllabus');
             }}
             onShowToast={showToast}
@@ -869,6 +875,11 @@ function DashboardContent() {
             onAddQuestion={handleAddQuestion}
             onAddFlashcard={handleAddFlashcard}
             onAddTopic={handleAddTopic}
+            onOpenPdfInReader={(pdf) => {
+              handleSelectSubject(pdf.subjectId, pdf.unitId);
+              setActivePdfIdForReader(pdf.id);
+              setCurrentView('syllabus');
+            }}
             onShowToast={showToast}
           />
         )}

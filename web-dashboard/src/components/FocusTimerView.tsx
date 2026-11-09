@@ -47,8 +47,25 @@ interface ActiveTimerSession {
   lastUpdated: number;
 }
 
+export interface CustomTimerPreset {
+  id: string;
+  name: string;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  isDefault?: boolean;
+}
+
 const SETTINGS_KEY = 'pyq_timer_settings';
 const ACTIVE_SESSION_KEY = 'pyq_timer_active_session';
+const CUSTOM_PRESETS_KEY = 'studyos_custom_timer_presets';
+
+const DEFAULT_PRESETS: CustomTimerPreset[] = [
+  { id: 'preset_pomo', name: '25m Pomodoro', hours: 0, minutes: 25, seconds: 0, isDefault: true },
+  { id: 'preset_deep', name: '45m Deep Study', hours: 0, minutes: 45, seconds: 0, isDefault: true },
+  { id: 'preset_mock', name: '3h Mock Exam', hours: 3, minutes: 0, seconds: 0, isDefault: true },
+  { id: 'preset_rev', name: '15m Quick Revision', hours: 0, minutes: 15, seconds: 0, isDefault: true },
+];
 
 const DEFAULT_SETTINGS: TimerSettings = {
   focusDuration: 25,
@@ -93,6 +110,128 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
   const [sessionCount, setSessionCount] = useState(0);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
+
+  // Custom Direct Time Inputs (Hours, Minutes, Seconds)
+  const [customHours, setCustomHours] = useState<number>(0);
+  const [customMinutes, setCustomMinutes] = useState<number>(25);
+  const [customSeconds, setCustomSeconds] = useState<number>(0);
+
+  // Click-to-Edit Clock Digits
+  const [isEditingClock, setIsEditingClock] = useState<boolean>(false);
+  const [clockEditH, setClockEditH] = useState<number>(0);
+  const [clockEditM, setClockEditM] = useState<number>(25);
+  const [clockEditS, setClockEditS] = useState<number>(0);
+
+  // Custom Presets
+  const [presets, setPresets] = useState<CustomTimerPreset[]>(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_PRESETS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse custom presets:', e);
+    }
+    return DEFAULT_PRESETS;
+  });
+
+  const [newPresetName, setNewPresetName] = useState<string>('');
+  const [isSavingPreset, setIsSavingPreset] = useState<boolean>(false);
+
+  const saveCustomPresets = (updated: CustomTimerPreset[]) => {
+    setPresets(updated);
+    try {
+      localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to save custom presets:', e);
+    }
+  };
+
+  const handleApplyCustomTime = (h: number, m: number, s: number) => {
+    const totalSec = (Math.max(0, h) * 3600) + (Math.max(0, m) * 60) + Math.max(0, s);
+    if (totalSec < 5) {
+      onShowToast('Please set at least 5 seconds for study timer.', 'info');
+      return;
+    }
+    if (timerRef.current) clearInterval(timerRef.current);
+    setIsActive(false);
+    setTargetEndTime(null);
+    setTotalDurationSeconds(totalSec);
+    setSecondsLeft(totalSec);
+    persistActiveSession(null);
+    setIsEditingClock(false);
+    onShowToast(`Timer set to ${h > 0 ? `${h}h ` : ''}${m}m ${s > 0 ? `${s}s` : ''}! ⏱️`, 'success');
+  };
+
+  const handleAdjustSeconds = (deltaSec: number) => {
+    const newSecondsLeft = Math.max(5, secondsLeft + deltaSec);
+    setSecondsLeft(newSecondsLeft);
+    setTotalDurationSeconds(prev => Math.max(newSecondsLeft, prev + deltaSec));
+
+    if (isActive && targetEndTime) {
+      const updatedEndTime = targetEndTime + (deltaSec * 1000);
+      setTargetEndTime(updatedEndTime);
+      persistActiveSession({
+        mode,
+        subjectId: selectedSubjectId,
+        targetEndTime: updatedEndTime,
+        totalDurationSeconds: Math.max(newSecondsLeft, totalDurationSeconds + deltaSec),
+        remainingSeconds: newSecondsLeft,
+        isRunning: true,
+        lastUpdated: Date.now()
+      });
+    }
+    const minDiff = Math.round(deltaSec / 60);
+    onShowToast(`${minDiff > 0 ? `+${minDiff}` : `${minDiff}`} min fine-tuned! ⚡`, 'info');
+  };
+
+  const handleApplyPreset = (p: CustomTimerPreset) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setIsActive(false);
+    setTargetEndTime(null);
+    const totalSec = (p.hours * 3600) + (p.minutes * 60) + p.seconds;
+    setTotalDurationSeconds(totalSec);
+    setSecondsLeft(totalSec);
+    persistActiveSession(null);
+    setCustomHours(p.hours);
+    setCustomMinutes(p.minutes);
+    setCustomSeconds(p.seconds);
+    setIsEditingClock(false);
+    onShowToast(`Loaded preset "${p.name}" (${p.hours > 0 ? `${p.hours}h ` : ''}${p.minutes}m)! ⏱️`, 'info');
+  };
+
+  const handleSaveCurrentAsPreset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPresetName.trim()) return;
+
+    const curH = Math.floor(secondsLeft / 3600);
+    const curM = Math.floor((secondsLeft % 3600) / 60);
+    const curS = secondsLeft % 60;
+
+    const newP: CustomTimerPreset = {
+      id: `preset_${Date.now()}`,
+      name: newPresetName.trim(),
+      hours: curH,
+      minutes: curM,
+      seconds: curS,
+      isDefault: false
+    };
+
+    const updated = [...presets, newP];
+    saveCustomPresets(updated);
+    setNewPresetName('');
+    setIsSavingPreset(false);
+    onShowToast(`Saved preset "${newP.name}"! ⭐`, 'success');
+  };
+
+  const handleDeletePreset = (id: string) => {
+    const updated = presets.filter(p => p.id !== id);
+    saveCustomPresets(updated);
+    onShowToast('Preset deleted.', 'info');
+  };
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId) || subjects[0];
@@ -335,10 +474,14 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
     }
   };
 
-  // Format MM:SS
-  const mins = Math.floor(secondsLeft / 60);
+  // Format HH:MM:SS or MM:SS
+  const hours = Math.floor(secondsLeft / 3600);
+  const mins = Math.floor((secondsLeft % 3600) / 60);
   const secs = secondsLeft % 60;
-  const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const formattedTime = hours > 0 
+    ? `${pad(hours)} : ${pad(mins)} : ${pad(secs)}`
+    : `${pad(mins)} : ${pad(secs)}`;
 
   // Weekly Stats calculation directly from logged sessions
   const weeklyStats = React.useMemo(() => {
@@ -593,14 +736,152 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
               </span>
             </div>
 
-            {/* Giant Timer Digits */}
+            {/* Giant Timer Digits (Click-to-Edit when paused) */}
             <div className="py-2">
-              <div className="text-6xl sm:text-8xl font-black font-mono tracking-tight text-paper-ink dark:text-night-text select-none countdown-digit">
-                {formattedTime}
-              </div>
-              <p className="text-xs text-paper-muted dark:text-night-muted mt-2">
+              {isEditingClock ? (
+                <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border-2 border-emerald-500/50 max-w-sm mx-auto space-y-3 animate-fade-slide-up">
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block font-mono">
+                    ✏️ Edit Timer Duration Directly
+                  </span>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-paper-muted font-mono font-bold">HOURS</span>
+                      <input 
+                        type="number"
+                        min={0}
+                        max={12}
+                        value={clockEditH}
+                        onChange={e => setClockEditH(Math.max(0, Math.min(12, parseInt(e.target.value, 10) || 0)))}
+                        className="w-16 text-center text-2xl font-black font-mono py-1 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border"
+                      />
+                    </div>
+                    <span className="text-2xl font-black font-mono pt-4">:</span>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-paper-muted font-mono font-bold">MINS</span>
+                      <input 
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={clockEditM}
+                        onChange={e => setClockEditM(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
+                        className="w-16 text-center text-2xl font-black font-mono py-1 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border"
+                      />
+                    </div>
+                    <span className="text-2xl font-black font-mono pt-4">:</span>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] text-paper-muted font-mono font-bold">SECS</span>
+                      <input 
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={clockEditS}
+                        onChange={e => setClockEditS(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
+                        className="w-16 text-center text-2xl font-black font-mono py-1 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingClock(false)}
+                      className="px-3 py-1 rounded-lg border border-paper-border dark:border-night-border text-xs font-bold text-paper-muted hover:text-paper-ink"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyCustomTime(clockEditH, clockEditM, clockEditS)}
+                      className="px-4 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-xs active:scale-95"
+                    >
+                      ✓ Apply Time
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => {
+                    if (isActive) {
+                      onShowToast('Pause timer to edit digits directly ⏱️', 'info');
+                      return;
+                    }
+                    setClockEditH(Math.floor(secondsLeft / 3600));
+                    setClockEditM(Math.floor((secondsLeft % 3600) / 60));
+                    setClockEditS(secondsLeft % 60);
+                    setIsEditingClock(true);
+                  }}
+                  className={`group relative inline-block cursor-pointer px-4 py-1 rounded-2xl transition-all ${
+                    !isActive ? 'hover:bg-paper-cardElevated/70 dark:hover:bg-night-cardElevated/70' : ''
+                  }`}
+                  title={isActive ? 'Timer running' : 'Click to edit custom duration directly'}
+                >
+                  <div className="text-6xl sm:text-8xl font-black font-mono tracking-tight text-paper-ink dark:text-night-text select-none countdown-digit">
+                    {formattedTime}
+                  </div>
+                  {!isActive && (
+                    <span className="text-[10px] font-mono font-bold text-paper-muted group-hover:text-emerald-500 transition-colors block">
+                      👆 Click digits to set custom duration
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <p className="text-xs text-paper-muted dark:text-night-muted mt-1.5">
                 {mode === 'focus' ? 'Keep distractions away and master your concepts.' : 'Relax, breathe, and grab water before the next sprint.'}
               </p>
+            </div>
+
+            {/* Quick Fine-Tune Stepper Buttons (Adjust time even while running!) */}
+            <div className="flex items-center justify-center gap-1.5 flex-wrap pt-1 pb-2">
+              <span className="text-[10px] font-mono font-bold text-paper-muted uppercase mr-1">Fine-Tune:</span>
+              <button
+                type="button"
+                onClick={() => handleAdjustSeconds(-600)}
+                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-rose-500 hover:border-rose-500/40 active:scale-95 transition-all"
+              >
+                -10m
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdjustSeconds(-300)}
+                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-rose-500 hover:border-rose-500/40 active:scale-95 transition-all"
+              >
+                -5m
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdjustSeconds(-60)}
+                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-rose-500 hover:border-rose-500/40 active:scale-95 transition-all"
+              >
+                -1m
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdjustSeconds(60)}
+                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-emerald-500 hover:border-emerald-500/40 active:scale-95 transition-all"
+              >
+                +1m
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdjustSeconds(300)}
+                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-emerald-500 hover:border-emerald-500/40 active:scale-95 transition-all"
+              >
+                +5m
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdjustSeconds(600)}
+                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-emerald-500 hover:border-emerald-500/40 active:scale-95 transition-all"
+              >
+                +10m
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdjustSeconds(1800)}
+                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-emerald-500 hover:border-emerald-500/40 active:scale-95 transition-all"
+              >
+                +30m
+              </button>
             </div>
 
             {/* Controls */}
@@ -632,6 +913,128 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                   Log Now ({elapsedMinutes}m)
                 </button>
               )}
+            </div>
+
+            {/* Sleek "⚙️ Set Custom Time" Panel */}
+            <div className="pt-4 border-t border-paper-border dark:border-night-border text-left space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-paper-ink dark:text-night-text flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Set Custom Time</span>
+                </span>
+                <span className="text-[10px] font-mono text-paper-muted">Direct Hours : Mins : Secs</span>
+              </div>
+
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 items-end">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-paper-muted block">Hours (0–12)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={12}
+                    value={customHours}
+                    onChange={e => setCustomHours(Math.max(0, Math.min(12, parseInt(e.target.value, 10) || 0)))}
+                    className="w-full text-center px-2 py-1.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-mono font-bold text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-paper-muted block">Mins (0–59)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={customMinutes}
+                    onChange={e => setCustomMinutes(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
+                    className="w-full text-center px-2 py-1.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-mono font-bold text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-paper-muted block">Secs (0–59)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={customSeconds}
+                    onChange={e => setCustomSeconds(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
+                    className="w-full text-center px-2 py-1.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-mono font-bold text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="col-span-3 sm:col-span-1">
+                  <button
+                    type="button"
+                    onClick={() => handleApplyCustomTime(customHours, customMinutes, customSeconds)}
+                    className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs active:scale-95"
+                  >
+                    Set Timer
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Timer Presets (Default + Custom Saved to LocalStorage) */}
+            <div className="pt-3 border-t border-paper-border dark:border-night-border text-left space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-paper-ink dark:text-night-text flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Timer Presets</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsSavingPreset(!isSavingPreset)}
+                  className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+                >
+                  {isSavingPreset ? '✕ Cancel' : '+ Save Current as Preset'}
+                </button>
+              </div>
+
+              {isSavingPreset && (
+                <form onSubmit={handleSaveCurrentAsPreset} className="flex items-center gap-2 pt-1 animate-fade-slide-up">
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 45m Deep Study, 3h Mock Exam..."
+                    value={newPresetName}
+                    onChange={e => setNewPresetName(e.target.value)}
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shrink-0 shadow-xs active:scale-95"
+                  >
+                    Save
+                  </button>
+                </form>
+              )}
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                {presets.map(p => (
+                  <div
+                    key={p.id}
+                    className="group/preset inline-flex items-center rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border hover:border-emerald-500/50 shadow-xs transition-all overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPreset(p)}
+                      className="px-3 py-1.5 text-xs font-mono font-bold text-paper-ink dark:text-night-text hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                    >
+                      {p.name}
+                    </button>
+                    {!p.isDefault && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePreset(p.id)}
+                        className="px-1.5 py-1.5 text-paper-muted hover:text-rose-500 transition-colors border-l border-paper-border dark:border-night-border opacity-0 group-hover/preset:opacity-100"
+                        title="Delete custom preset"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

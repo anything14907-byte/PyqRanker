@@ -69,6 +69,7 @@ interface PdfNotesViewProps {
   onAddQuestion: (q: PYQQuestion) => void;
   onAddFlashcard: (card: Flashcard) => void;
   onAddTopic?: (topic: SyllabusTopic) => void;
+  onOpenPdfInReader?: (pdf: PdfResource) => void;
   onShowToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
 
@@ -83,6 +84,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
   onAddQuestion,
   onAddFlashcard,
   onAddTopic,
+  onOpenPdfInReader,
   onShowToast
 }) => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(activeSubjectId || subjects[0]?.id || 'os');
@@ -1371,6 +1373,22 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
                   </div>
                 ))}
               </div>
+
+              {onOpenPdfInReader && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenPdfInReader(viewingPdf);
+                      setViewingPdf(null);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>📖 Open in Book Spread (Split / Full Page)</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -51,12 +51,16 @@ export async function extractTextFromPdfBuffer(
   try {
     const pdfjsLib = await import('pdfjs-dist');
     if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '4.10.38'}/pdf.worker.min.mjs`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/build/pdf.worker.min.mjs`;
     }
 
     // Make a clone of the buffer so pdfjs-dist doesn't detach the original
     const bufferCopy = buffer.slice(0);
-    const loadingTask = pdfjsLib.getDocument({ data: bufferCopy });
+    const loadingTask = pdfjsLib.getDocument({
+      data: bufferCopy,
+      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/cmaps/`,
+      cMapPacked: true,
+    });
     const pdf = await loadingTask.promise;
     const numPages = pdf.numPages;
     const pageTexts: string[] = [];
@@ -96,43 +100,64 @@ export async function extractTextFromPdfBuffer(
 
 /**
  * Render a single PDF page directly to an HTML5 canvas using pdfjs-dist
+ * Scales responsive to the container clientWidth with high-DPI clarity
  */
 export async function renderPdfPageToCanvas(
   pdfBuffer: ArrayBuffer,
   pageNumber: number,
   canvas: HTMLCanvasElement,
-  scale: number = 1.2
+  scale: number = 1.0
 ): Promise<{ totalPages: number; width: number; height: number }> {
   const pdfjsLib = await import('pdfjs-dist');
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '4.10.38'}/pdf.worker.min.mjs`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/build/pdf.worker.min.mjs`;
   }
 
   const bufferCopy = pdfBuffer.slice(0);
-  const loadingTask = pdfjsLib.getDocument({ data: bufferCopy });
+  const loadingTask = pdfjsLib.getDocument({
+    data: bufferCopy,
+    cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version || '4.10.38'}/cmaps/`,
+    cMapPacked: true,
+  });
   const pdf = await loadingTask.promise;
   const totalPages = pdf.numPages;
 
   const validPage = Math.max(1, Math.min(pageNumber, totalPages));
   const page = await pdf.getPage(validPage);
-  const viewport = page.getViewport({ scale });
 
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
+  // Compute responsive fit scale
+  const parentWidth = canvas.parentElement?.clientWidth || canvas.clientWidth || 600;
+  const unscaledViewport = page.getViewport({ scale: 1.0 });
+  const responsiveBaseScale = parentWidth > 60 ? (parentWidth - 24) / unscaledViewport.width : 1.0;
+  const effectiveScale = Math.max(0.6, responsiveBaseScale * scale);
 
-  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const viewport = page.getViewport({ scale: effectiveScale * dpr });
+
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+  canvas.style.width = `${Math.floor(viewport.width / dpr)}px`;
+  canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
+
+  const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) throw new Error('Canvas 2D context not available');
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const renderContext = {
     canvasContext: ctx,
     viewport: viewport
   };
 
-  await page.render(renderContext as any).promise;
+  try {
+    await page.render(renderContext as any).promise;
+  } catch (renderErr) {
+    console.error('page.render failed:', renderErr);
+    throw renderErr;
+  }
 
-  return { totalPages, width: viewport.width, height: viewport.height };
+  return { totalPages, width: viewport.width / dpr, height: viewport.height / dpr };
 }
 
 /**
