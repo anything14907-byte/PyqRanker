@@ -8,7 +8,7 @@
 
 > **Study OS** is an Apple Liquid Glass & Fluid Dynamic **Personal College Exam Command Center & Academic Hub** for university students. It combines real-time ticking exam countdowns for every subject, dynamic custom subject creation/deletion, a smart AI-style study coach, an embedded YouTube lecture vault with side-by-side timestamps & notes, a client-side PDF document vault, 4-card deep concept explainers with 3D memory flashcards, and a high-repeat university PYQ bank with inline active recall testing.
 
-**Live Deployment on GitHub Pages:** [https://anything14907-byte.github.io/creative/](https://anything14907-byte.github.io/creative/)
+**Live Deployment on GitHub Pages:** [https://anything14907-byte.github.io/PyqRanker/](https://anything14907-byte.github.io/PyqRanker/)
 
 ---
 

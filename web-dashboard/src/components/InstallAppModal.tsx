@@ -67,7 +67,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      const currentUrl = typeof window !== 'undefined' ? window.location.href.split('?')[0] : 'https://anything14907-byte.github.io/creative/';
+      const currentUrl = typeof window !== 'undefined' ? window.location.href.split('?')[0] : 'https://anything14907-byte.github.io/PyqRanker/';
       QRCode.toDataURL(currentUrl, {
         width: 220,
         margin: 1.5,

@@ -831,7 +831,7 @@
     });
 
     shadow.getElementById('pyq-open-dashboard')?.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'OPEN_WEB_DASHBOARD', url: 'https://anything14907-byte.github.io/creative/' });
+      chrome.runtime.sendMessage({ type: 'OPEN_WEB_DASHBOARD', url: 'https://anything14907-byte.github.io/PyqRanker/' });
     });
 
     shadow.getElementById('pyq-scan-selection')?.addEventListener('click', () => {
