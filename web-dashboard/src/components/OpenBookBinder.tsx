@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { 
   SubjectMeta, 
   SyllabusTopic, 
@@ -7,14 +7,19 @@ import {
   PdfResource, 
   TopicMastery,
   Flashcard,
-  SubjectUnit
+  SubjectUnit,
+  UnitImageResource,
+  UnitImageCategory
 } from '../types';
 import { 
   formatUnitDisplayName, 
   getUnitDisplayLabel,
   extractYoutubeId, 
   getExamUrgencyColor, 
-  storageService 
+  storageService,
+  sortUnitsByNumber,
+  getNextMissingUnitNumber,
+  parseUnitNumber
 } from '../utils/storageService';
 import { getBookClothColor } from '../utils/bookColors';
 import { useTheme } from '../contexts/ThemeContext';
@@ -51,7 +56,10 @@ import {
   Maximize2,
   Minimize2,
   Columns,
-  FileUp
+  FileUp,
+  Image as ImageIcon,
+  Brain,
+  Edit2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { 
@@ -61,6 +69,14 @@ import {
   extractTextFromPdfBuffer, 
   generateExamNotesAndPYQs 
 } from '../utils/pdfStorageService';
+import { 
+  loadUnitImages, 
+  createAndSaveUnitImage, 
+  deleteUnitImage, 
+  compressAndReadFile, 
+  formatImageCategoryBadge 
+} from '../utils/unitImageService';
+import { DiagramLightboxModal } from './DiagramLightboxModal';
 
 interface OpenBookBinderProps {
   subject: SubjectMeta;
@@ -129,7 +145,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   const isLight = themeMode === 'liquid-light';
   const cloth = getBookClothColor(subject.accentColor);
 
-  const units = subject.units || [];
+  const units = useMemo(() => sortUnitsByNumber(subject.units || []), [subject.units]);
 
   // Active Chapter Selection ('all' or specific unitId)
   const [activeUnitId, setActiveUnitId] = useState<string>(() => {
@@ -244,9 +260,147 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   const [isUploadingPdf, setIsUploadingPdf] = useState<boolean>(false);
   const [uploadTargetUnitId, setUploadTargetUnitId] = useState<string | null>(null);
 
-  // Inline forms & player toggles
+  // Unit Creation & Editing State (Explicit Unit Number + Auto-suggest missing integer)
   const [showAddUnitInput, setShowAddUnitInput] = useState(false);
+  const [newUnitNumber, setNewUnitNumber] = useState<number>(() => getNextMissingUnitNumber(units));
   const [newUnitTitle, setNewUnitTitle] = useState('');
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [editingUnitNumber, setEditingUnitNumber] = useState<number>(1);
+  const [editingUnitTitle, setEditingUnitTitle] = useState<string>('');
+
+  // Unit Images & Diagrams State (Permanent IndexedDB StudyOS_Unit_Images)
+  const [unitImages, setUnitImages] = useState<UnitImageResource[]>([]);
+  const [lightboxImageId, setLightboxImageId] = useState<string | null>(null);
+  const [isDiagramsOnlyView, setIsDiagramsOnlyView] = useState<boolean>(false);
+  const [diagramCategoryFilter, setDiagramCategoryFilter] = useState<string>('all');
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
+
+  // Clipboard Paste Modal State (Instant Cmd+V / Ctrl+V capture)
+  const [pastedImageDataUrl, setPastedImageDataUrl] = useState<string | null>(null);
+  const [pastedImageCategory, setPastedImageCategory] = useState<UnitImageCategory>('diagram');
+  const [pastedImageTitle, setPastedImageTitle] = useState<string>('');
+  const [pastedImageUnitId, setPastedImageUnitId] = useState<string>('');
+  const [pastedImagePyqId, setPastedImagePyqId] = useState<string | undefined>(undefined);
+
+  // Reload Images from IndexedDB
+  const reloadImages = useCallback(async () => {
+    try {
+      const loaded = await loadUnitImages(subject.id);
+      setUnitImages(loaded);
+    } catch (e) {
+      console.error('Failed to load unit images from IndexedDB:', e);
+    }
+  }, [subject.id]);
+
+  useEffect(() => {
+    reloadImages();
+  }, [reloadImages]);
+
+  // Instant Clipboard Paste Listener (Cmd+V / Ctrl+V)
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+      if (isInput && !e.clipboardData?.types.includes('Files')) {
+        return;
+      }
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            const { dataUrl } = await compressAndReadFile(file);
+            setPastedImageDataUrl(dataUrl);
+            setPastedImageCategory('diagram');
+            setPastedImageTitle(`Snapshot ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+            const targetUId = (activeUnitId && activeUnitId !== 'all') ? activeUnitId : (units[0]?.id || '');
+            setPastedImageUnitId(targetUId);
+            onShowToast('Screenshot captured from clipboard! Confirm unit & category to save. 📸', 'info');
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [activeUnitId, units, onShowToast]);
+
+  const handleImageFilesUpload = async (files: FileList | File[], targetUnitId: string, pyqId?: string) => {
+    if (!files || files.length === 0) return;
+    setIsUploadingImage(true);
+    let count = 0;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith('image/')) continue;
+        const { dataUrl, fileSize, mimeType } = await compressAndReadFile(file);
+        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+        let cat: UnitImageCategory = 'diagram';
+        if (/graph|chart|plot/i.test(nameWithoutExt)) cat = 'graph';
+        else if (/pyq|exam|question/i.test(nameWithoutExt) || pyqId) cat = 'pyq';
+        else if (/formula|sheet|math/i.test(nameWithoutExt)) cat = 'formula';
+        else if (/note|hand|written/i.test(nameWithoutExt)) cat = 'handwritten';
+
+        await createAndSaveUnitImage({
+          subjectId: subject.id,
+          unitId: targetUnitId,
+          pyqId,
+          title: nameWithoutExt,
+          category: cat,
+          dataUrl,
+          mimeType,
+          fileSize
+        });
+        count++;
+      }
+      await reloadImages();
+      onShowToast(`Saved ${count} visual diagram(s) to Unit gallery! 🖼️`, 'success');
+    } catch (err) {
+      console.error('Failed to upload image:', err);
+      onShowToast('Error saving image to IndexedDB.', 'error');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleDeleteUnitImageClick = async (imageId: string, imageTitle: string) => {
+    if (window.confirm(`Delete diagram "${imageTitle}"?`)) {
+      try {
+        await deleteUnitImage(imageId);
+        await reloadImages();
+        onShowToast(`Deleted "${imageTitle}"`, 'info');
+      } catch (err) {
+        onShowToast('Error deleting image.', 'error');
+      }
+    }
+  };
+
+  const handleSavePastedImage = async () => {
+    if (!pastedImageDataUrl || !pastedImageUnitId) return;
+    try {
+      setIsUploadingImage(true);
+      await createAndSaveUnitImage({
+        subjectId: subject.id,
+        unitId: pastedImageUnitId,
+        pyqId: pastedImagePyqId,
+        title: pastedImageTitle.trim() || 'Pasted Diagram',
+        category: pastedImageCategory,
+        dataUrl: pastedImageDataUrl,
+        mimeType: 'image/png'
+      });
+      await reloadImages();
+      setPastedImageDataUrl(null);
+      setPastedImageTitle('');
+      onShowToast('Diagram saved to Unit gallery! 🖼️', 'success');
+    } catch (err) {
+      console.error('Failed to save image:', err);
+      onShowToast('Could not save image to IndexedDB.', 'error');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   // Inline quick inputs per chapter
   const [addTopicUnitId, setAddTopicUnitId] = useState<string | null>(null);
@@ -627,20 +781,52 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
     }
   };
 
-  // Chapter Creation
+  // Chapter Creation & Editing Handlers
   const handleCreateUnit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUnitTitle.trim()) return;
 
+    const unitNum = newUnitNumber || getNextMissingUnitNumber(units);
+
     if (onAddUnit) {
-      onAddUnit(subject.id, `Chapter ${units.length + 1}`, newUnitTitle.trim());
+      onAddUnit(subject.id, `Unit ${unitNum}`, newUnitTitle.trim());
     } else {
-      storageService.addUnit(subject.id, `Chapter ${units.length + 1}`, newUnitTitle.trim());
+      storageService.addUnit(subject.id, `Unit ${unitNum}`, newUnitTitle.trim());
     }
 
     setNewUnitTitle('');
     setShowAddUnitInput(false);
-    onShowToast('New Chapter added to textbook index! 📖', 'success');
+    onShowToast(`Unit ${unitNum}: "${newUnitTitle.trim()}" added to index! 📖`, 'success');
+  };
+
+  const handleSaveEditUnit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUnitId || !editingUnitTitle.trim()) return;
+
+    const unitNum = editingUnitNumber || 1;
+
+    if (onRenameUnit) {
+      onRenameUnit(subject.id, editingUnitId, `Unit ${unitNum}`, editingUnitTitle.trim());
+    } else {
+      storageService.renameUnit(subject.id, editingUnitId, `Unit ${unitNum}`, editingUnitTitle.trim());
+    }
+
+    setEditingUnitId(null);
+    onShowToast(`Updated to Unit ${unitNum}: "${editingUnitTitle.trim()}"! ✏️`, 'success');
+  };
+
+  const handleDeleteUnitClick = (unitId: string, unitTitle: string) => {
+    if (window.confirm(`Delete "${unitTitle}" and its topics? This cannot be undone.`)) {
+      if (onDeleteUnit) {
+        onDeleteUnit(subject.id, unitId);
+      } else {
+        storageService.deleteUnit(subject.id, unitId);
+      }
+      onShowToast(`Deleted "${unitTitle}"`, 'info');
+      if (activeUnitId === unitId) {
+        setActiveUnitId('all');
+      }
+    }
   };
 
   const handleCreateTopic = (unitId: string, unitIndex: number) => {
@@ -792,22 +978,61 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
             ))}
           </div>
 
-          {/* 🎯 "Focus: Weak Topics Only" Crunch Mode Toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              setIsWeakOnly(!isWeakOnly);
-              onShowToast(isWeakOnly ? 'Showing all chapter items' : 'Exam Crunch: Showing only weak topics & pending items! 🎯', 'info');
-            }}
-            className={`px-3 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 shrink-0 ${
-              isWeakOnly 
-                ? 'bg-amber-500 text-stone-950 font-black shadow-md ring-2 ring-amber-400' 
-                : 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:border-amber-500 border border-transparent'
-            }`}
-          >
-            <Target className="w-3.5 h-3.5" />
-            <span>{isWeakOnly ? '🎯 Weak & Pending Active' : '🎯 Weak Only'}</span>
-          </button>
+          {/* 3-Mode Revision Filter Pills: All Chapter Content | Weak Only | All Graphs & Diagrams */}
+          <div className="flex items-center gap-1.5 shrink-0 bg-stone-200/80 dark:bg-stone-900/80 p-1 rounded-xl border border-stone-300 dark:border-stone-800">
+            <button
+              type="button"
+              onClick={() => {
+                setIsWeakOnly(false);
+                setIsDiagramsOnlyView(false);
+              }}
+              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                !isWeakOnly && !isDiagramsOnlyView
+                  ? 'bg-amber-500 text-stone-950 font-black shadow-xs'
+                  : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
+              }`}
+            >
+              <span>📖 All Chapter Content</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsWeakOnly(true);
+                setIsDiagramsOnlyView(false);
+                onShowToast('Exam Crunch: Showing only weak topics & pending items! 🎯', 'info');
+              }}
+              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all ${
+                isWeakOnly && !isDiagramsOnlyView
+                  ? 'bg-amber-500 text-stone-950 font-black shadow-xs'
+                  : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
+              }`}
+            >
+              <Target className="w-3.5 h-3.5" />
+              <span>🎯 Weak Only</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsDiagramsOnlyView(true);
+                setIsWeakOnly(false);
+                onShowToast(`Viewing all visual graphs & diagrams for ${subject.name}! 🖼️`, 'info');
+              }}
+              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all ${
+                isDiagramsOnlyView
+                  ? 'bg-amber-500 text-stone-950 font-black shadow-xs'
+                  : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
+              }`}
+            >
+              <span>🖼️ All Graphs & Diagrams</span>
+              {unitImages.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-black/20 dark:bg-white/20 font-mono">
+                  {unitImages.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1200,6 +1425,53 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                     const uVids = subjectVideos.filter(v => v.unitId === unit.id || v.unit === unit.unit).length;
                     const uPdfs = subjectPdfs.filter(p => p.unitId === unit.id || p.unit === unit.unit).length;
                     const uPyqs = subjectQuestions.filter(q => q.unitId === unit.id || q.unit === unit.unit).length;
+                    const uImages = unitImages.filter(img => img.unitId === unit.id).length;
+
+                    if (editingUnitId === unit.id) {
+                      return (
+                        <form 
+                          key={unit.id}
+                          onSubmit={handleSaveEditUnit} 
+                          onClick={(e) => e.stopPropagation()} 
+                          className="p-3 rounded-xl bg-stone-200 dark:bg-stone-900 border border-amber-500 space-y-2 animate-fade-slide-down"
+                        >
+                          <div className="text-[10px] font-mono font-bold text-amber-500 uppercase">
+                            Edit Unit Number & Title
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20">
+                              <label className="text-[9px] font-mono font-bold opacity-70">Unit #</label>
+                              <input 
+                                type="number" 
+                                min={1} 
+                                value={editingUnitNumber} 
+                                onChange={(e) => setEditingUnitNumber(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                className="w-full px-2 py-1 text-xs font-mono font-bold rounded bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700" 
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <label className="text-[9px] font-mono font-bold opacity-70">Title</label>
+                              <input 
+                                type="text" 
+                                value={editingUnitTitle} 
+                                onChange={(e) => setEditingUnitTitle(e.target.value)}
+                                className="w-full px-2 py-1 text-xs rounded bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700" 
+                                autoFocus
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button type="submit" className="px-3 py-1 rounded bg-amber-500 text-stone-950 font-bold text-xs flex items-center gap-1">
+                              <Check className="w-3 h-3" />
+                              <span>Save</span>
+                            </button>
+                            <button type="button" onClick={() => setEditingUnitId(null)} className="p-1 text-stone-400">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </form>
+                      );
+                    }
 
                     return (
                       <div 
@@ -1208,7 +1480,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                           e.stopPropagation();
                           handleSelectUnit(unit.id);
                         }}
-                        className={`p-3 rounded-xl cursor-pointer transition-all border ${
+                        className={`group/toc p-3 rounded-xl cursor-pointer transition-all border ${
                           isSelected 
                             ? 'border-amber-500 bg-amber-500/10 shadow-sm' 
                             : 'border-transparent hover:border-stone-300 dark:hover:border-stone-800'
@@ -1225,17 +1497,46 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                           </span>
                         </div>
 
-                        {/* Chapter Full Name */}
-                        <div className="font-serif text-xs font-bold leading-snug mt-1 pl-1">
-                          {unit.title}
+                        {/* Chapter Full Name + Action Buttons */}
+                        <div className="flex items-start justify-between gap-2 mt-1 pl-1">
+                          <div className="font-serif text-xs font-bold leading-snug flex-1">
+                            {unit.title}
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover/toc:opacity-100 transition-opacity shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingUnitId(unit.id);
+                                setEditingUnitNumber(parseUnitNumber(unit) !== Infinity ? parseUnitNumber(unit) : 1);
+                                setEditingUnitTitle(unit.title);
+                              }}
+                              className="p-1 rounded hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-500 hover:text-amber-500"
+                              title="Edit Chapter / Unit Number and Title"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteUnitClick(unit.id, unit.title);
+                              }}
+                              className="p-1 rounded hover:bg-red-500/20 text-stone-500 hover:text-red-500"
+                              title="Delete Chapter / Unit"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Indented Sub-counts of Topics & Attachments */}
-                        <div className="flex items-center gap-2 mt-2 pl-2 text-[10px] font-mono opacity-70">
+                        <div className="flex flex-wrap items-center gap-2 mt-2 pl-2 text-[10px] font-mono opacity-70">
                           <span>• {uTopics.length} Topics</span>
                           <span>• {uVids} Vids</span>
                           <span>• {uPdfs} PDFs</span>
                           <span>• {uPyqs} PYQs</span>
+                          {uImages > 0 && <span className="text-amber-500 font-bold">• {uImages} Diagrams</span>}
                         </div>
                       </div>
                     );
@@ -1245,14 +1546,32 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                 {/* + Add New Chapter (Unit) */}
                 {showAddUnitInput ? (
                   <form onSubmit={handleCreateUnit} className="p-3 rounded-xl bg-stone-200 dark:bg-stone-900 border border-amber-500/50 space-y-2">
-                    <input 
-                      type="text" 
-                      autoFocus
-                      placeholder="Chapter Title (e.g. Memory Management)"
-                      value={newUnitTitle}
-                      onChange={(e) => setNewUnitTitle(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs rounded-lg bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700"
-                    />
+                    <div className="text-[10px] font-mono font-bold text-amber-500 uppercase">
+                      New Chapter / Unit
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-20">
+                        <label className="text-[10px] font-mono font-bold opacity-70">Unit #</label>
+                        <input 
+                          type="number" 
+                          min={1}
+                          value={newUnitNumber}
+                          onChange={(e) => setNewUnitNumber(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded-lg bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[10px] font-mono font-bold opacity-70">Chapter Title</label>
+                        <input 
+                          type="text" 
+                          autoFocus
+                          placeholder="e.g. Memory Management"
+                          value={newUnitTitle}
+                          onChange={(e) => setNewUnitTitle(e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs rounded-lg bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700"
+                        />
+                      </div>
+                    </div>
                     <div className="flex items-center gap-2">
                       <button type="submit" className="flex-1 py-1 rounded bg-amber-500 text-stone-950 font-bold text-xs">
                         Add Chapter
@@ -1265,11 +1584,14 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setShowAddUnitInput(true)}
+                    onClick={() => {
+                      setNewUnitNumber(getNextMissingUnitNumber(units));
+                      setShowAddUnitInput(true);
+                    }}
                     className="w-full py-2.5 rounded-xl border border-dashed border-amber-500/60 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>+ Add New Chapter (Unit)</span>
+                    <span>+ Add Chapter / Unit</span>
                   </button>
                 )}
               </div>
@@ -1377,8 +1699,163 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                 </div>
               )}
 
-              {/* RENDER EACH CHAPTER IN BOLD TEXTBOOK HIERARCHY */}
-              {displayedUnits.map((unit) => {
+              {/* =========================================================================
+                  MASTER DIAGRAM & GRAPH GALLERY VIEW (1-Click Revision View)
+                  ========================================================================= */}
+              {isDiagramsOnlyView ? (
+                <div className="space-y-6 animate-fade-slide-up">
+                  <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-transparent border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-xl sm:text-2xl font-serif font-black text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                        <span>🖼️</span>
+                        <span>Master Visual Diagram & Graph Review</span>
+                      </h3>
+                      <p className="text-xs font-serif opacity-80 mt-1 max-w-xl leading-relaxed">
+                        Rapid high-yield review before your exam. All architecture diagrams, concept graphs, formula sheets, and visual PYQ question snapshots across all chapters of {subject.name}.
+                      </p>
+                    </div>
+
+                    <label className="cursor-pointer px-4 py-2 rounded-xl bg-amber-500 text-stone-950 font-bold text-xs flex items-center gap-2 shadow-md hover:bg-amber-400 active:scale-95 shrink-0 transition-transform">
+                      <Plus className="w-4 h-4" />
+                      <span>+ Upload Diagram / Graph</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        multiple 
+                        className="hidden" 
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            const defaultUId = (activeUnitId && activeUnitId !== 'all') ? activeUnitId : (units[0]?.id || '');
+                            handleImageFilesUpload(e.target.files, defaultUId);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Category Filter Chips */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[
+                      { id: 'all', label: 'All Visuals', count: unitImages.length },
+                      { id: 'graph', label: '📊 Graphs', count: unitImages.filter(i => i.category === 'graph').length },
+                      { id: 'diagram', label: '📐 Diagrams', count: unitImages.filter(i => i.category === 'diagram').length },
+                      { id: 'pyq', label: '🔥 PYQ Snapshots', count: unitImages.filter(i => i.category === 'pyq').length },
+                      { id: 'formula', label: '📝 Formulas', count: unitImages.filter(i => i.category === 'formula').length },
+                      { id: 'handwritten', label: '✍️ Notes', count: unitImages.filter(i => i.category === 'handwritten').length }
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setDiagramCategoryFilter(tab.id)}
+                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                          diagramCategoryFilter === tab.id
+                            ? 'bg-amber-500 text-stone-950 font-black shadow-xs'
+                            : 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-300'
+                        }`}
+                      >
+                        <span>{tab.label} ({tab.count})</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Diagrams Masonry Grid */}
+                  {(() => {
+                    const filtered = diagramCategoryFilter === 'all' 
+                      ? unitImages 
+                      : unitImages.filter(i => i.category === diagramCategoryFilter);
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="py-16 text-center border-2 border-dashed border-stone-300 dark:border-stone-800 rounded-2xl p-6 space-y-2">
+                          <div className="text-4xl">🖼️</div>
+                          <h4 className="text-sm font-serif font-bold text-stone-700 dark:text-stone-300">
+                            No visual diagrams found in this category.
+                          </h4>
+                          <p className="text-xs font-mono opacity-60">
+                            Press Cmd+V / Ctrl+V anywhere to paste a diagram screenshot, or click Upload above.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {filtered.map(img => {
+                          const badge = formatImageCategoryBadge(img.category);
+                          const parentUnit = units.find(u => u.id === img.unitId);
+                          return (
+                            <div 
+                              key={img.id}
+                              onClick={() => setLightboxImageId(img.id)}
+                              className="group/mcard relative rounded-2xl overflow-hidden border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-sm hover:shadow-xl transition-all cursor-pointer hover:scale-[1.02] flex flex-col justify-between"
+                            >
+                              <div>
+                                <div className="relative w-full h-44 bg-stone-950 flex items-center justify-center overflow-hidden">
+                                  <img 
+                                    src={img.dataUrl} 
+                                    alt={img.title} 
+                                    className="w-full h-full object-cover group-hover/mcard:scale-105 transition-transform duration-300" 
+                                  />
+                                  <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border backdrop-blur-md ${badge.color}`}>
+                                      {badge.icon} {badge.label}
+                                    </span>
+                                  </div>
+                                  {parentUnit && (
+                                    <div className="absolute bottom-2 left-2">
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-black/80 text-amber-400 border border-amber-500/30">
+                                        {getUnitDisplayLabel(parentUnit)}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="absolute top-2 right-2 opacity-0 group-hover/mcard:opacity-100 transition-opacity">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteUnitImageClick(img.id, img.title);
+                                      }}
+                                      className="p-1 rounded-md bg-red-600/90 text-white shadow hover:bg-red-700"
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="p-3.5 space-y-1.5">
+                                  <h4 className="font-serif font-black text-sm text-stone-900 dark:text-stone-100 line-clamp-1">
+                                    {img.title}
+                                  </h4>
+                                  {img.examNotes ? (
+                                    <p className="text-xs font-serif text-stone-600 dark:text-stone-400 line-clamp-2 italic">
+                                      💡 {img.examNotes}
+                                    </p>
+                                  ) : (
+                                    <p className="text-[10px] font-mono text-stone-400">
+                                      Click to view full-screen, self-test labels, and zoom.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="px-3.5 pb-3 pt-1 border-t border-stone-100 dark:border-stone-800/80 flex items-center justify-between text-[10px] font-mono opacity-75">
+                                <span>{img.fileSize || 'Visual'}</span>
+                                <span className="text-amber-500 font-bold group-hover/mcard:underline flex items-center gap-1">
+                                  <Maximize2 className="w-3 h-3" />
+                                  <span>View Full Screen</span>
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                /* RENDER EACH CHAPTER IN BOLD TEXTBOOK HIERARCHY */
+                displayedUnits.map((unit) => {
                 const uIndex = units.findIndex(u => u.id === unit.id);
                 const uLabel = getUnitDisplayLabel(unit);
 
@@ -1387,6 +1864,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                 let cVids = subjectVideos.filter(v => v.unitId === unit.id || v.unit === unit.unit);
                 let cPdfs = subjectPdfs.filter(p => p.unitId === unit.id || p.unit === unit.unit);
                 let cPyqs = subjectQuestions.filter(q => q.unitId === unit.id || q.unit === unit.unit);
+                const uImages = unitImages.filter(img => img.unitId === unit.id);
 
                 // Apply Crunch Filter if active
                 if (isWeakOnly) {
@@ -1407,6 +1885,32 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                           {uLabel.toUpperCase()}
                         </span>
                         <div className="flex items-center gap-2">
+                          {/* ✏️ Edit Chapter / Unit */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingUnitId(unit.id);
+                              setEditingUnitNumber(parseUnitNumber(unit) !== Infinity ? parseUnitNumber(unit) : 1);
+                              setEditingUnitTitle(unit.title);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-mono font-bold text-[11px] flex items-center gap-1 active:scale-95"
+                            title="Edit Unit Number and Title"
+                          >
+                            <Edit2 className="w-3 h-3 text-amber-500" />
+                            <span>Edit Unit</span>
+                          </button>
+
+                          {/* 🗑️ Delete Chapter */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUnitClick(unit.id, unit.title)}
+                            className="px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-mono font-bold text-[11px] flex items-center gap-1 active:scale-95"
+                            title="Delete Chapter"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Delete</span>
+                          </button>
+
                           {/* ⚡ 2-Min Chapter Quiz Button */}
                           <button
                             type="button"
@@ -2109,9 +2613,61 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                   <p className="font-serif font-bold text-xs sm:text-sm leading-snug">
                                     {q.question}
                                   </p>
+
+                                  {/* Attached Diagram / Snapshots for this PYQ */}
+                                  {(() => {
+                                    const qImages = unitImages.filter(img => img.pyqId === q.id);
+                                    if (qImages.length === 0) return null;
+                                    return (
+                                      <div className="mt-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                                        <div className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 mb-1 flex items-center gap-1">
+                                          <span>🖼️ Attached Question Diagrams ({qImages.length}):</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                          {qImages.map(img => (
+                                            <div 
+                                              key={img.id}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setLightboxImageId(img.id);
+                                              }}
+                                              className="group/qimg relative w-20 h-16 rounded-lg overflow-hidden border border-amber-500/40 bg-stone-950 cursor-pointer hover:scale-105 transition-all shadow-xs"
+                                              title={`${img.title} (Click to Enlarge)`}
+                                            >
+                                              <img src={img.dataUrl} alt={img.title} className="w-full h-full object-cover" />
+                                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/qimg:opacity-100 flex items-center justify-center text-white text-[9px] font-mono font-bold transition-opacity">
+                                                🔍 Enlarge
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
 
                                 <div className="flex items-center gap-1.5 shrink-0">
+                                  {/* Attach Diagram to Question */}
+                                  <label 
+                                    className="px-2 py-1 rounded bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-[10px] font-mono font-bold cursor-pointer flex items-center gap-1 shrink-0"
+                                    title="Attach diagram, graph or question snapshot to this PYQ"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <ImageIcon className="w-3 h-3 text-amber-500" />
+                                    <span>+ Diagram</span>
+                                    <input 
+                                      type="file" 
+                                      accept="image/*" 
+                                      multiple 
+                                      className="hidden" 
+                                      onChange={(e) => {
+                                        if (e.target.files && e.target.files.length > 0) {
+                                          handleImageFilesUpload(e.target.files, unit.id, q.id);
+                                        }
+                                      }}
+                                    />
+                                  </label>
+
                                   <button
                                     type="button"
                                     onClick={() => onToggleQuestionMastered(q.id)}
@@ -2229,9 +2785,132 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                       )}
                     </div>
 
+                    {/* -----------------------------------------------------------------
+                        E. UNIT GRAPHS, DIAGRAMS & VISUAL PYQ SNAPSHOTS
+                        ----------------------------------------------------------------- */}
+                    <div className="space-y-3 pt-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-mono font-black tracking-wider uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                          <span className="text-sm">🖼️</span>
+                          <span>E. Unit Graphs, Diagrams & Visuals ({uImages.length})</span>
+                        </h4>
+                        <div className="flex items-center gap-2">
+                          <label className="cursor-pointer text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1">
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>+ Upload Image(s)</span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              multiple 
+                              className="hidden" 
+                              onChange={(e) => {
+                                if (e.target.files) {
+                                  handleImageFilesUpload(e.target.files, unit.id);
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Drag & Drop Zone + Gallery Grid */}
+                      <div 
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (e.dataTransfer.files) {
+                            handleImageFilesUpload(e.dataTransfer.files, unit.id);
+                          }
+                        }}
+                        className="p-3 sm:p-4 rounded-2xl border-2 border-dashed border-stone-300 dark:border-stone-800 bg-stone-500/5 transition-all"
+                      >
+                        {uImages.length === 0 ? (
+                          <label className="cursor-pointer flex flex-col items-center justify-center py-6 text-center">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 mb-2">
+                              <ImageIcon className="w-5 h-5 text-amber-500" />
+                            </div>
+                            <p className="text-xs font-serif font-bold text-stone-700 dark:text-stone-300">
+                              No diagrams or graphs added to this Chapter yet.
+                            </p>
+                            <p className="text-[10px] font-mono opacity-60 mt-0.5">
+                              Click to upload, drag & drop files, or press <kbd className="px-1 py-0.5 rounded bg-stone-200 dark:bg-stone-800 font-mono">Cmd+V</kbd> / <kbd className="px-1 py-0.5 rounded bg-stone-200 dark:bg-stone-800 font-mono">Ctrl+V</kbd> to paste screenshots
+                            </p>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              multiple 
+                              className="hidden" 
+                              onChange={(e) => {
+                                if (e.target.files) {
+                                  handleImageFilesUpload(e.target.files, unit.id);
+                                }
+                              }}
+                            />
+                          </label>
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                            {uImages.map(img => {
+                              const badge = formatImageCategoryBadge(img.category);
+                              return (
+                                <div 
+                                  key={img.id}
+                                  onClick={() => setLightboxImageId(img.id)}
+                                  className="group/img relative rounded-xl overflow-hidden border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-xs hover:shadow-md transition-all cursor-pointer hover:scale-[1.02]"
+                                >
+                                  <div className="absolute top-1.5 left-1.5 z-10">
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border backdrop-blur-xs flex items-center gap-1 ${badge.color}`}>
+                                      <span>{badge.icon}</span>
+                                      <span className="hidden sm:inline">{badge.label}</span>
+                                    </span>
+                                  </div>
+
+                                  <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1 opacity-0 group-hover/img:opacity-100 transition-opacity">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteUnitImageClick(img.id, img.title);
+                                      }}
+                                      className="p-1 rounded-md bg-red-600/90 text-white shadow hover:bg-red-700"
+                                      title="Delete diagram"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+
+                                  <div className="w-full h-28 bg-stone-950 flex items-center justify-center overflow-hidden">
+                                    <img 
+                                      src={img.dataUrl} 
+                                      alt={img.title} 
+                                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300" 
+                                    />
+                                  </div>
+
+                                  <div className="p-2 space-y-1">
+                                    <div className="text-[11px] font-serif font-bold truncate text-stone-900 dark:text-stone-100">
+                                      {img.title}
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] font-mono opacity-60">
+                                      <span>{img.fileSize || 'Visual'}</span>
+                                      <span className="text-amber-500 font-bold group-hover/img:underline flex items-center gap-0.5">
+                                        <Maximize2 className="w-2.5 h-2.5" />
+                                        <span>Enlarge</span>
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                   </section>
                 );
-              })}
+              })
+              )}
             </div>
 
             {/* Right Page Running Footer */}
@@ -2575,6 +3254,123 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                 </div>
               </aside>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          FULL-SCREEN DIAGRAM LIGHTBOX MODAL (Rapid Flipper, Occlusion Self-Test & Zoom)
+          ========================================================================= */}
+      {lightboxImageId && (
+        <DiagramLightboxModal
+          images={unitImages}
+          initialImageId={lightboxImageId}
+          onClose={() => setLightboxImageId(null)}
+          onDeleteImage={(id) => {
+            const img = unitImages.find(i => i.id === id);
+            handleDeleteUnitImageClick(id, img?.title || 'Diagram');
+          }}
+          onShowToast={onShowToast}
+        />
+      )}
+
+      {/* =========================================================================
+          INSTANT CLIPBOARD SCREENSHOT (Cmd+V / Ctrl+V) SAVE MODAL
+          ========================================================================= */}
+      {pastedImageDataUrl && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-stone-900 border border-amber-500/50 rounded-2xl p-5 sm:p-6 max-w-lg w-full space-y-4 shadow-2xl text-stone-100">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-serif font-black text-sm sm:text-base text-amber-400 flex items-center gap-2">
+                <span>📸</span>
+                <span>Attach Screenshot to Chapter Gallery</span>
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setPastedImageDataUrl(null)}
+                className="p-1 rounded-lg hover:bg-white/10 text-stone-400"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Thumbnail Preview */}
+            <div className="w-full h-44 bg-black/60 rounded-xl overflow-hidden flex items-center justify-center border border-white/10">
+              <img src={pastedImageDataUrl} alt="Pasted" className="w-full h-full object-contain" />
+            </div>
+
+            {/* Inputs: Title, Category, Chapter */}
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-mono font-bold uppercase text-stone-400">
+                  Diagram / Snapshot Title:
+                </label>
+                <input
+                  type="text"
+                  value={pastedImageTitle}
+                  onChange={(e) => setPastedImageTitle(e.target.value)}
+                  placeholder="e.g. Memory Hierarchy Graph, Architecture Diagram..."
+                  className="w-full mt-1 px-3 py-2 text-xs rounded-xl bg-black/50 border border-white/20 text-white focus:outline-none focus:border-amber-500"
+                  autoFocus
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-mono font-bold uppercase text-stone-400">
+                    Category:
+                  </label>
+                  <select
+                    value={pastedImageCategory}
+                    onChange={(e) => setPastedImageCategory(e.target.value as any)}
+                    className="w-full mt-1 px-3 py-2 text-xs font-mono font-bold rounded-xl bg-black/50 border border-white/20 text-white focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="diagram">📐 Diagram</option>
+                    <option value="graph">📊 Graph</option>
+                    <option value="pyq">🔥 PYQ Snapshot</option>
+                    <option value="formula">📝 Formula Sheet</option>
+                    <option value="handwritten">✍️ Handwritten Note</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono font-bold uppercase text-stone-400">
+                    Assign to Chapter:
+                  </label>
+                  <select
+                    value={pastedImageUnitId}
+                    onChange={(e) => setPastedImageUnitId(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 text-xs font-mono font-bold rounded-xl bg-black/50 border border-white/20 text-white focus:outline-none focus:border-amber-500"
+                  >
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {getUnitDisplayLabel(u)}: {u.title.slice(0, 18)}...
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setPastedImageDataUrl(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-stone-300 font-bold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isUploadingImage}
+                onClick={handleSavePastedImage}
+                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs flex items-center gap-2 shadow-lg"
+              >
+                <Check className="w-4 h-4" />
+                <span>{isUploadingImage ? 'Saving...' : 'Save to Diagram Gallery'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

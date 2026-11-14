@@ -10,7 +10,7 @@ import {
   ChevronRight, 
   Palette
 } from 'lucide-react';
-import { formatUnitDisplayName, getUnitDisplayLabel, getUnitShortBadge, getExamUrgencyColor } from '../utils/storageService';
+import { formatUnitDisplayName, getUnitDisplayLabel, getUnitShortBadge, getExamUrgencyColor, sortUnitsByNumber } from '../utils/storageService';
 
 interface TactileSubjectBookProps {
   subject: SubjectMeta;
@@ -47,8 +47,8 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
   // Formatted volume number: VOLUME 01, VOLUME 02
   const volumeNumber = `VOLUME ${String(volumeIndex + 1).padStart(2, '0')}`;
 
-  // Subject Units mapped as Chapters
-  const units = subject.units || [];
+  // Subject Units mapped as Chapters - strictly sorted by numerical sequence (1, 2, 3, 4...)
+  const units = sortUnitsByNumber(subject.units || []);
 
   // Exam urgency calculation for the Inset Chronometer Band
   const examUrgency = subject.examDate ? getExamUrgencyColor(subject.examDate) : null;
@@ -235,24 +235,24 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
             </div>
           </div>
 
-          {/* Embossed Collector's Edition Chronometer Band (Debossed inside cover cloth) */}
+          {/* Embossed Collector's Edition Chronometer Band (2-Row Instrument Layout, Zero Truncation) */}
           <div 
             onClick={(e) => {
               e.stopPropagation();
               onEditExamDate(subject);
             }}
-            className="w-full my-2.5 px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 group/band hover:scale-[1.01] active:scale-[0.99]"
+            className="w-full my-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group/band hover:scale-[1.01] active:scale-[0.99] space-y-2"
             style={{
-              backgroundColor: 'rgba(10, 12, 16, 0.42)',
-              border: '1px solid rgba(255, 255, 255, 0.09)',
-              borderLeft: `3.5px solid ${urgencyAccent}`,
-              boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.15)'
+              backgroundColor: 'rgba(10, 12, 16, 0.55)',
+              border: '1px solid rgba(255, 255, 255, 0.10)',
+              borderLeft: `4px solid ${urgencyAccent}`,
+              boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.15)'
             }}
-            title="Click anywhere to change target exam date & time"
+            title="Click to edit exam target date & time"
           >
+            {/* Top Row: Urgency Dot + Full Uncut Exam Date & Time + Subtle "Edit Date ✎" */}
             <div className="flex items-center justify-between gap-2">
-              {/* Left Side: Glowing urgency status dot + Formatted Exam Date */}
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
                 <span 
                   className={`w-2 h-2 rounded-full shrink-0 transition-all ${
                     isCriticallyUrgent ? 'animate-pulse' : ''
@@ -262,37 +262,43 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
                     boxShadow: `0 0 8px ${urgencyAccent}`
                   }}
                 />
-                <span className="text-[11px] font-mono font-bold text-white/95 truncate flex items-center gap-1.5">
+                <span className="text-[11px] font-mono font-bold text-white/95 whitespace-nowrap overflow-visible flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-white/70 shrink-0" />
-                  <span className="truncate">
+                  <span>
                     {hasExamDate 
                       ? examUrgency.formattedExamDate 
                       : isPast 
                       ? 'Exam Finished' 
-                      : 'Set Exam Target Date'}
+                      : 'No Target Date Set'}
                   </span>
                 </span>
               </div>
 
-              {/* Right Side: Live Countdown Pill Badge */}
-              <div className="shrink-0">
-                {hasExamDate ? (
-                  <div 
-                    className="px-2 py-0.5 rounded-md font-mono text-[10.5px] font-black tracking-tight tabular-nums flex items-center shadow-inner"
-                    style={{
-                      backgroundColor: 'rgba(0, 0, 0, 0.45)',
-                      color: urgencyAccent,
-                      border: `1px solid ${urgencyAccent}40`
-                    }}
-                  >
-                    <LiveCountdown examDate={subject.examDate} compact={true} />
-                  </div>
-                ) : (
-                  <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold text-white/60 bg-white/5 border border-white/10 group-hover/band:text-amber-400 group-hover/band:border-amber-400/40 transition-colors">
-                    + Set Date
-                  </span>
-                )}
-              </div>
+              <span className="text-[10px] font-mono font-bold text-white/50 group-hover/band:text-amber-400 flex items-center gap-1 shrink-0 transition-colors">
+                <span>Edit Date</span>
+                <span className="text-[11px]">✎</span>
+              </span>
+            </div>
+
+            {/* Bottom Row: Full-Width Recessed Digital Countdown Display */}
+            <div 
+              className="w-full py-1 px-2.5 rounded-lg font-mono text-[11px] sm:text-xs font-black tracking-wider tabular-nums flex items-center justify-center shadow-inner"
+              style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.55)',
+                color: urgencyAccent,
+                border: `1px solid ${urgencyAccent}35`,
+                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.6)'
+              }}
+            >
+              {hasExamDate ? (
+                <LiveCountdown examDate={subject.examDate} compact={true} />
+              ) : isPast ? (
+                <span className="text-stone-400 font-bold">Exam Finished</span>
+              ) : (
+                <span className="text-amber-400/90 font-bold flex items-center gap-1">
+                  + Set Target Countdown
+                </span>
+              )}
             </div>
           </div>
 

@@ -66,6 +66,7 @@ export interface PYQQuestion {
   lastAttemptAnswer?: string;
   bookmarked?: boolean;
   isCustom?: boolean;
+  imageIds?: string[]; // Links attached diagrams or visual PYQ snapshots
 }
 
 export interface SubjectMeta {
@@ -149,6 +150,35 @@ export interface PdfResource {
   summaryPoints?: string[];
   lastReadPage?: number;
   isRead?: boolean;
+}
+
+export type UnitImageCategory = 'diagram' | 'graph' | 'pyq' | 'formula' | 'handwritten';
+
+export interface DiagramOcclusionMask {
+  id: string;
+  x: number; // percentage 0 - 100%
+  y: number; // percentage 0 - 100%
+  width: number; // percentage 0 - 100%
+  height: number; // percentage 0 - 100%
+  label?: string; // Text hidden under the mask
+  isRevealed?: boolean;
+}
+
+export interface UnitImageResource {
+  id: string;
+  subjectId: string;
+  unitId: string;
+  unit?: number;
+  pyqId?: string; // Links image to an optional specific PYQ question
+  title: string;
+  category: UnitImageCategory;
+  dataUrl: string; // Base64 or Blob URL stored permanently in IndexedDB
+  mimeType: string;
+  fileSize?: string;
+  examNotes?: string; // Key points / captions to write when drawing this diagram in the exam
+  examPoints?: string[];
+  masks?: DiagramOcclusionMask[]; // Occlusion masks for self-test recall mode
+  createdAt: number;
 }
 
 export interface ConceptExplainer {

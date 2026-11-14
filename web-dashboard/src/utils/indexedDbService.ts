@@ -1,8 +1,8 @@
-import { SubjectMeta, SubjectFile, FileCategory, SubjectNote, VideoResource, HubBackupData } from '../types';
+import { SubjectMeta, SubjectFile, FileCategory, SubjectNote, VideoResource, HubBackupData, UnitImageResource, DiagramOcclusionMask } from '../types';
 import { storageService, DEFAULT_SUBJECTS } from './storageService';
 
 const DB_NAME = 'PyqRankerHubDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbInstance: IDBDatabase | null = null;
 
@@ -44,6 +44,14 @@ function openDB(): Promise<IDBDatabase> {
       // 5. StudyOS Permanent PDF Binary Store (No more expired blob URLs)
       if (!db.objectStoreNames.contains('StudyOS_PDF_Blobs')) {
         db.createObjectStore('StudyOS_PDF_Blobs', { keyPath: 'id' });
+      }
+
+      // 6. StudyOS Unit Images, Diagrams & PYQ Snapshots Store
+      if (!db.objectStoreNames.contains('StudyOS_Unit_Images')) {
+        const imgStore = db.createObjectStore('StudyOS_Unit_Images', { keyPath: 'id' });
+        imgStore.createIndex('subjectId', 'subjectId', { unique: false });
+        imgStore.createIndex('unitId', 'unitId', { unique: false });
+        imgStore.createIndex('pyqId', 'pyqId', { unique: false });
       }
     };
 
@@ -982,6 +990,95 @@ export const indexedDbService = {
       const req = store.getAll();
       req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
+    });
+  },
+
+  // -------------------------------------------------------------
+  // StudyOS Unit Images, Diagrams & PYQ Snapshots (Permanent Store)
+  // -------------------------------------------------------------
+  async saveUnitImage(image: UnitImageResource): Promise<UnitImageResource> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('StudyOS_Unit_Images', 'readwrite');
+      const store = tx.objectStore('StudyOS_Unit_Images');
+      const req = store.put(image);
+      req.onsuccess = () => resolve(image);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async getUnitImages(subjectId?: string, unitId?: string): Promise<UnitImageResource[]> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('StudyOS_Unit_Images', 'readonly');
+      const store = tx.objectStore('StudyOS_Unit_Images');
+      const req = store.getAll();
+      req.onsuccess = () => {
+        let results: UnitImageResource[] = req.result || [];
+        if (subjectId) {
+          results = results.filter(img => img.subjectId === subjectId);
+        }
+        if (unitId && unitId !== 'all') {
+          results = results.filter(img => img.unitId === unitId);
+        }
+        // Sort newest first
+        results.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        resolve(results);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async deleteUnitImage(id: string): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('StudyOS_Unit_Images', 'readwrite');
+      const store = tx.objectStore('StudyOS_Unit_Images');
+      const req = store.delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async updateUnitImageMasks(id: string, masks: DiagramOcclusionMask[]): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('StudyOS_Unit_Images', 'readwrite');
+      const store = tx.objectStore('StudyOS_Unit_Images');
+      const getReq = store.get(id);
+      getReq.onsuccess = () => {
+        const item: UnitImageResource | undefined = getReq.result;
+        if (!item) {
+          resolve();
+          return;
+        }
+        item.masks = masks;
+        const putReq = store.put(item);
+        putReq.onsuccess = () => resolve();
+        putReq.onerror = () => reject(putReq.error);
+      };
+      getReq.onerror = () => reject(getReq.error);
+    });
+  },
+
+  async updateUnitImageNotes(id: string, examNotes: string): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('StudyOS_Unit_Images', 'readwrite');
+      const store = tx.objectStore('StudyOS_Unit_Images');
+      const getReq = store.get(id);
+      getReq.onsuccess = () => {
+        const item: UnitImageResource | undefined = getReq.result;
+        if (!item) {
+          resolve();
+          return;
+        }
+        item.examNotes = examNotes;
+        const putReq = store.put(item);
+        putReq.onsuccess = () => resolve();
+        putReq.onerror = () => reject(putReq.error);
+      };
+      getReq.onerror = () => reject(getReq.error);
     });
   }
 };

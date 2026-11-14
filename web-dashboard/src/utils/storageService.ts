@@ -376,16 +376,104 @@ export function getUnitDisplayLabel(unit?: any): string {
 }
 
 /**
- * Returns a compact badge label for tabs and tight UI (e.g. "Unit 3")
- * NEVER uses array index!
+ * Returns a compact badge label for tabs and tight UI (e.g. "Ch 1", "Ch 2", "Ch 3")
+ * Parses explicit unit number or label.
  */
 export function getUnitShortBadge(unit?: any): string {
+  const num = parseUnitNumber(unit);
+  if (num !== Infinity) {
+    return `Ch ${num}`;
+  }
   const fullLabel = getUnitDisplayLabel(unit);
   const numMatch = fullLabel.match(/\d+/);
   if (numMatch) {
-    return `Unit ${numMatch[0]}`;
+    return `Ch ${numMatch[0]}`;
   }
-  return fullLabel;
+  return fullLabel.slice(0, 5);
+}
+
+/**
+ * Safely parses the numerical value of a unit from its unit, unitNumber, unitLabel, or title.
+ * e.g., "Unit 3" -> 3, "Ch 2" -> 2, "3" -> 3, "Chapter 4: Design" -> 4.
+ */
+export function parseUnitNumber(unit: any): number {
+  if (unit === null || unit === undefined) return Infinity;
+  if (typeof unit === 'number' && !isNaN(unit)) return unit;
+
+  if (typeof unit === 'object') {
+    if (typeof unit.unit === 'number' && !isNaN(unit.unit)) return unit.unit;
+    if (typeof unit.unitNumber === 'number' && !isNaN(unit.unitNumber)) return unit.unitNumber;
+
+    const candidates = [
+      unit.unitLabel,
+      unit.unitNumber,
+      unit.title,
+      unit.name,
+      unit.unitTitle
+    ];
+
+    for (const c of candidates) {
+      if (typeof c === 'string' && c.trim()) {
+        const match = c.match(/(?:unit|ch|chapter|module|section|part)?\s*(\d+)/i);
+        if (match && match[1]) {
+          const parsed = parseInt(match[1], 10);
+          if (!isNaN(parsed)) return parsed;
+        }
+      }
+    }
+    return Infinity;
+  }
+
+  if (typeof unit === 'string') {
+    const match = unit.match(/(?:unit|ch|chapter|module|section|part)?\s*(\d+)/i);
+    if (match && match[1]) {
+      const parsed = parseInt(match[1], 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+  }
+
+  return Infinity;
+}
+
+/**
+ * Always sorts units in strict ascending numerical order (Unit 1 -> Unit 2 -> Unit 3 -> Unit 4).
+ * Unnumbered units fall back to title comparison.
+ */
+export function sortUnitsByNumber<T extends SubjectUnit | any>(units: T[]): T[] {
+  if (!units || !Array.isArray(units)) return [];
+  return [...units].sort((a, b) => {
+    const numA = parseUnitNumber(a);
+    const numB = parseUnitNumber(b);
+    if (numA !== numB) {
+      return numA - numB;
+    }
+    const titleA = String((a as any)?.title || (a as any)?.name || '');
+    const titleB = String((b as any)?.title || (b as any)?.name || '');
+    return titleA.localeCompare(titleB);
+  });
+}
+
+/**
+ * Returns the lowest missing positive integer (1, 2, 3, 4...) from the given units.
+ * For example:
+ * - If units are [3, 4], returns 1 (or 2 if 1 is present).
+ * - If units are [1, 3, 4], returns 2.
+ * - If units are [1, 2, 3, 4], returns 5.
+ */
+export function getNextMissingUnitNumber(units: SubjectUnit[]): number {
+  if (!units || !Array.isArray(units) || units.length === 0) return 1;
+  const existing = new Set<number>();
+  for (const u of units) {
+    const num = parseUnitNumber(u);
+    if (num > 0 && num < 10000 && Number.isInteger(num)) {
+      existing.add(num);
+    }
+  }
+  let candidate = 1;
+  while (existing.has(candidate)) {
+    candidate++;
+  }
+  return candidate;
 }
 
 /**
@@ -399,7 +487,7 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
   const raw = subject.units ?? subject.syllabus ?? subject.topics;
 
   if (Array.isArray(raw) && raw.length > 0) {
-    return raw.map((item: any, idx: number) => {
+    const mapped = raw.map((item: any, idx: number) => {
       if (typeof item === 'string') {
         const title = item.trim();
         const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
@@ -456,12 +544,13 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
         name: 'Unit'
       };
     });
+    return sortUnitsByNumber(mapped);
   }
 
   if (typeof raw === 'string' && raw.trim().length > 0) {
     const lines = raw.split(/\r?\n|,/).map(l => l.trim()).filter(Boolean);
     if (lines.length > 0) {
-      return lines.map((line, idx) => {
+      const mapped = lines.map((line, idx) => {
         const match = line.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
         const label = match ? match[1].trim() : undefined;
         const cleanTitle = match ? match[2].trim() : line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || line.trim();
@@ -476,6 +565,7 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
           name: cleanTitle || 'Unit'
         };
       });
+      return sortUnitsByNumber(mapped);
     }
   }
 
@@ -954,57 +1044,75 @@ export const storageService = {
     return updated;
   },
 
-  // UNITS: ADD, RENAME, DELETE, REORDER WITHOUT AUTO-RENUMBERING
-  addUnit(subjectId: string, unitLabel: string, unitTitle?: string, examId?: string): SubjectMeta[] {
+  // UNITS: ADD, RENAME, DELETE, REORDER WITH AUTOMATIC NUMERICAL SEQUENCE SORTING (1, 2, 3, 4)
+  addUnit(subjectId: string, unitLabelOrNumber: string | number, unitTitle?: string, examId?: string): SubjectMeta[] {
     const subjects = this.getSubjects(examId);
     const target = subjects.find(s => s.id === subjectId);
     if (!target) return subjects;
-    let label = (unitTitle !== undefined ? unitLabel : '').trim();
-    let title = (unitTitle !== undefined ? unitTitle : unitLabel).trim();
-    if (!label) {
+
+    let rawLabel = (unitTitle !== undefined ? String(unitLabelOrNumber) : '').trim();
+    let title = (unitTitle !== undefined ? unitTitle : String(unitLabelOrNumber)).trim();
+
+    if (!rawLabel) {
       const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
       if (match) {
-        label = match[1].trim();
+        rawLabel = match[1].trim();
         title = match[2].trim();
       }
     }
+
+    // Determine numerical sequence
+    const parsedNum = parseUnitNumber(rawLabel || title);
+    const finalNum = parsedNum !== Infinity ? parsedNum : getNextMissingUnitNumber(target.units || []);
+    const finalLabel = rawLabel ? (/^(unit|chapter|ch|module)\b/i.test(rawLabel) ? rawLabel : `Unit ${rawLabel}`) : `Unit ${finalNum}`;
+
     const newUnit: SubjectUnit = {
       id: `unit-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-      unitLabel: label || undefined,
-      title: title,
-      name: title,
-      unitNumber: label || title
+      unitLabel: finalLabel,
+      unit: finalNum,
+      unitNumber: finalNum,
+      title: title || `Chapter ${finalNum}`,
+      name: title || `Chapter ${finalNum}`
     };
-    target.units = [...(target.units || []), newUnit];
+
+    target.units = sortUnitsByNumber([...(target.units || []), newUnit]);
     this.saveSubjects(subjects, examId);
     return subjects;
   },
 
-  renameUnit(subjectId: string, unitId: string, newLabelOrTitle: string, newTitle?: string, examId?: string): SubjectMeta[] {
+  renameUnit(subjectId: string, unitId: string, newLabelOrNumber: string | number, newTitle?: string, examId?: string): SubjectMeta[] {
     const subjects = this.getSubjects(examId);
     const target = subjects.find(s => s.id === subjectId);
     if (!target || !target.units) return subjects;
-    let label = (newTitle !== undefined ? newLabelOrTitle : '').trim();
-    let title = (newTitle !== undefined ? newTitle : newLabelOrTitle).trim();
-    if (!label) {
+
+    let rawLabel = (newTitle !== undefined ? String(newLabelOrNumber) : '').trim();
+    let title = (newTitle !== undefined ? newTitle : String(newLabelOrNumber)).trim();
+
+    if (!rawLabel) {
       const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
       if (match) {
-        label = match[1].trim();
+        rawLabel = match[1].trim();
         title = match[2].trim();
       }
     }
-    target.units = target.units.map(u => {
+
+    target.units = sortUnitsByNumber(target.units.map(u => {
       if (u.id === unitId) {
+        const parsedNum = parseUnitNumber(rawLabel || title);
+        const finalNum = parsedNum !== Infinity ? parsedNum : (u.unit ?? 1);
+        const finalLabel = rawLabel ? (/^(unit|chapter|ch|module)\b/i.test(rawLabel) ? rawLabel : `Unit ${rawLabel}`) : (u.unitLabel || `Unit ${finalNum}`);
         return {
           ...u,
-          unitLabel: label || u.unitLabel || undefined,
-          title: title,
-          name: title,
-          unitNumber: label || title
+          unitLabel: finalLabel,
+          unit: finalNum,
+          unitNumber: finalNum,
+          title: title || u.title,
+          name: title || u.name
         };
       }
       return u;
-    });
+    }));
+
     this.saveSubjects(subjects, examId);
     return subjects;
   },
