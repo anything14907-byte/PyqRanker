@@ -97,14 +97,16 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
         }`}
         style={{
           transformStyle: 'preserve-3d',
-          minHeight: '360px',
+          height: '410px',
+          minHeight: '410px',
+          maxHeight: '410px',
           boxShadow: '12px 22px 35px -8px rgba(0, 0, 0, 0.5), 2px 4px 8px rgba(0, 0, 0, 0.3)'
         }}
         onClick={() => handleBookClick()}
       >
         {/* Embossed Book Spine & Recessed Spine Groove (Left Edge) */}
         <div 
-          className="w-7 sm:w-8 shrink-0 rounded-l-md flex flex-col items-center justify-between py-6 border-r border-black/40 relative z-10"
+          className="w-7 sm:w-8 shrink-0 rounded-l-md flex flex-col items-center justify-between py-5 border-r border-black/40 relative z-10 h-full"
           style={{
             backgroundColor: cloth.spineHex,
             backgroundImage: 'linear-gradient(to right, rgba(0,0,0,0.6) 0%, transparent 35%, rgba(255,255,255,0.15) 75%, rgba(0,0,0,0.35) 100%)',
@@ -128,7 +130,7 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
 
           {/* Bottom Subject Code */}
           <span 
-            className="text-[10px] font-mono font-extrabold tracking-wider writing-mode-vertical rotate-180"
+            className="text-[10px] font-mono font-extrabold tracking-wider writing-mode-vertical rotate-180 truncate max-h-[80px]"
             style={{ color: cloth.foilColor }}
           >
             {subject.code || 'TEXTBOOK'}
@@ -137,7 +139,7 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
 
         {/* Tactile Front Cover with 3D Flip Open Animation on Click/Hover */}
         <div 
-          className="flex-1 rounded-r-xl p-5 sm:p-6 flex flex-col justify-between relative z-10 transition-transform duration-500 origin-left border-y border-r border-white/10"
+          className="flex-1 rounded-r-xl p-4 sm:p-5 flex flex-col justify-between relative z-10 transition-transform duration-500 origin-left border-y border-r border-white/10 h-full overflow-hidden"
           style={{
             backgroundColor: cloth.hex,
             backgroundImage: 'radial-gradient(circle at 80% 20%, rgba(255,255,255,0.15) 0%, transparent 60%), linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.22) 100%)',
@@ -147,51 +149,6 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
               : undefined
           }}
         >
-          {/* Top Row: Volume Badge & Color Trigger */}
-          <div className="flex items-start justify-between gap-2 border-b border-white/15 pb-3">
-            <div className="flex items-center gap-2">
-              <span 
-                className="text-[11px] font-mono font-black tracking-widest uppercase px-2 py-0.5 rounded-sm bg-black/35 border border-white/10"
-                style={{ color: cloth.foilColor }}
-              >
-                {volumeNumber}
-              </span>
-              {subject.code && (
-                <span className="text-[11px] font-mono font-bold text-white/75">
-                  [{subject.code}]
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowColorPicker(!showColorPicker);
-                }}
-                className="p-1 rounded-md bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-colors"
-                title="Change Book-Cloth Color"
-              >
-                <Palette className="w-3.5 h-3.5" />
-              </button>
-
-              {onEditSubject && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEditSubject(subject);
-                  }}
-                  className="p-1 rounded-md bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-colors"
-                  title="Edit Subject Name & Settings"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-
           {/* Color Swatch Picker */}
           {showColorPicker && (
             <div 
@@ -216,32 +173,85 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
             </div>
           )}
 
-          {/* Center: Full Uncut Subject Title in Architectural Typography */}
-          <div className="my-auto py-2">
-            <h3 
-              className="text-lg sm:text-xl font-serif font-extrabold text-white tracking-tight leading-snug drop-shadow-md break-words"
-              style={{
-                textShadow: '0 2px 4px rgba(0,0,0,0.5)'
-              }}
-            >
-              {subject.name}
-            </h3>
+          {/* ZONE 1: HEADER ZONE (96px fixed) */}
+          <div className="h-[96px] min-h-[96px] max-h-[96px] flex flex-col justify-between overflow-hidden">
+            {/* Top Row: Volume Badge + Tools */}
+            <div className="flex items-center justify-between gap-2 border-b border-white/15 pb-2">
+              <div className="flex items-center gap-2">
+                <span 
+                  className="text-[11px] font-mono font-black tracking-widest uppercase px-2 py-0.5 rounded-sm bg-black/35 border border-white/10"
+                  style={{ color: cloth.foilColor }}
+                >
+                  {volumeNumber}
+                </span>
+                {subject.code && (
+                  <span className="text-[10px] font-mono font-bold text-white/75 truncate max-w-[80px]">
+                    [{subject.code}]
+                  </span>
+                )}
+              </div>
 
-            <div className="flex items-center gap-2 mt-1.5 text-xs text-white/80 font-mono">
-              <Layers className="w-3.5 h-3.5 text-amber-400" />
-              <span>{units.length} Chapters</span>
-              <span>•</span>
-              <span>{totalTopics} Topics</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowColorPicker(!showColorPicker);
+                  }}
+                  className="p-1 rounded-md bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-colors"
+                  title="Change Book-Cloth Color"
+                >
+                  <Palette className="w-3.5 h-3.5" />
+                </button>
+
+                {onEditSubject && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditSubject(subject);
+                    }}
+                    className="p-1 rounded-md bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-colors"
+                    title="Edit Subject Name & Settings"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Subject Title clamped to max 2 lines + subtitle */}
+            <div className="my-auto py-0.5">
+              <h3 
+                className="text-base sm:text-lg font-serif font-black text-white tracking-tight leading-snug drop-shadow-md line-clamp-2"
+                style={{
+                  textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden'
+                }}
+                title={subject.name}
+              >
+                {subject.name}
+              </h3>
+
+              <div className="flex items-center gap-2 mt-0.5 text-[11px] text-white/80 font-mono">
+                <Layers className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>{units.length} Chapters</span>
+                <span>•</span>
+                <span>{totalTopics} Topics</span>
+              </div>
             </div>
           </div>
 
-          {/* Embossed Collector's Edition Chronometer Band (2-Row Instrument Layout, Zero Truncation) */}
+          {/* ZONE 2: CHRONOMETER TIMER BAND (76px fixed, 2-Row Instrument Layout) */}
           <div 
             onClick={(e) => {
               e.stopPropagation();
               onEditExamDate(subject);
             }}
-            className="w-full my-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group/band hover:scale-[1.01] active:scale-[0.99] space-y-2"
+            className="w-full h-[76px] min-h-[76px] max-h-[76px] px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 group/band hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between overflow-hidden"
             style={{
               backgroundColor: 'rgba(10, 12, 16, 0.55)',
               border: '1px solid rgba(255, 255, 255, 0.10)',
@@ -251,8 +261,8 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
             title="Click to edit exam target date & time"
           >
             {/* Top Row: Urgency Dot + Full Uncut Exam Date & Time + Subtle "Edit Date ✎" */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
                 <span 
                   className={`w-2 h-2 rounded-full shrink-0 transition-all ${
                     isCriticallyUrgent ? 'animate-pulse' : ''
@@ -262,9 +272,9 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
                     boxShadow: `0 0 8px ${urgencyAccent}`
                   }}
                 />
-                <span className="text-[11px] font-mono font-bold text-white/95 whitespace-nowrap overflow-visible flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-white/70 shrink-0" />
-                  <span>
+                <span className="text-[10.5px] font-mono font-bold text-white/95 whitespace-nowrap overflow-visible flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-white/70 shrink-0" />
+                  <span className="truncate">
                     {hasExamDate 
                       ? examUrgency.formattedExamDate 
                       : isPast 
@@ -282,7 +292,7 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
 
             {/* Bottom Row: Full-Width Recessed Digital Countdown Display */}
             <div 
-              className="w-full py-1 px-2.5 rounded-lg font-mono text-[11px] sm:text-xs font-black tracking-wider tabular-nums flex items-center justify-center shadow-inner"
+              className="w-full py-1 px-2 rounded-lg font-mono text-[11px] sm:text-xs font-black tracking-wider tabular-nums flex items-center justify-center shadow-inner"
               style={{
                 backgroundColor: 'rgba(0, 0, 0, 0.55)',
                 color: urgencyAccent,
@@ -302,39 +312,53 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
             </div>
           </div>
 
-          {/* Bottom Row: Syllabus Mastery Breakdown & Open Book Action */}
-          <div className="space-y-3 pt-3 border-t border-white/15">
+          {/* ZONE 3: PROGRESS & MASTERY BAR ZONE (104px fixed) */}
+          <div className="h-[104px] min-h-[104px] max-h-[104px] pt-2 border-t border-white/15 flex flex-col justify-between overflow-hidden">
             <div className="flex items-center justify-between text-[11px] font-mono">
               <span className="text-white/90 font-bold">{progressPct}% Mastered</span>
               <div className="flex items-center gap-1.5">
-                <span className="px-1.5 py-0.2 rounded bg-red-950/70 text-red-200 border border-red-700/50" title="Weak topics">
+                <span className="px-1.5 py-0.5 rounded bg-red-950/70 text-red-200 border border-red-700/50 text-[10px]" title="Weak topics">
                   {weakCount} W
                 </span>
-                <span className="px-1.5 py-0.2 rounded bg-amber-950/70 text-amber-200 border border-amber-700/50" title="Okay topics">
+                <span className="px-1.5 py-0.5 rounded bg-amber-950/70 text-amber-200 border border-amber-700/50 text-[10px]" title="Okay topics">
                   {okayCount} O
                 </span>
-                <span className="px-1.5 py-0.2 rounded bg-emerald-950/70 text-emerald-200 border border-emerald-700/50" title="Strong topics">
+                <span className="px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-200 border border-emerald-700/50 text-[10px]" title="Strong topics">
                   {strongCount} S
                 </span>
               </div>
             </div>
 
-            {/* Progress Track */}
-            <div className="w-full h-1.5 rounded-full bg-black/40 border border-white/10 overflow-hidden">
-              <div 
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${progressPct}%`,
-                  background: 'linear-gradient(to right, #F59E0B, #10B981)'
-                }}
-              />
+            {/* Multi-Color Segment Progress Track */}
+            <div className="w-full h-1.5 rounded-full bg-black/40 border border-white/10 overflow-hidden flex">
+              {totalTopics > 0 ? (
+                <>
+                  <div 
+                    className="h-full bg-emerald-500 transition-all duration-500"
+                    style={{ width: `${(strongCount / totalTopics) * 100}%` }}
+                    title={`${strongCount} Strong`}
+                  />
+                  <div 
+                    className="h-full bg-amber-500 transition-all duration-500"
+                    style={{ width: `${(okayCount / totalTopics) * 100}%` }}
+                    title={`${okayCount} Okay`}
+                  />
+                  <div 
+                    className="h-full bg-rose-500 transition-all duration-500"
+                    style={{ width: `${(weakCount / totalTopics) * 100}%` }}
+                    title={`${weakCount} Weak`}
+                  />
+                </>
+              ) : (
+                <div className="h-full bg-stone-600 w-full opacity-40" />
+              )}
             </div>
 
-            {/* "📖 Open Book" Action Button */}
+            {/* ACTION FOOTER: Full-width embossed "Open Book" button */}
             <button
               type="button"
               onClick={() => handleBookClick()}
-              className="w-full py-2.5 rounded-lg bg-black/45 hover:bg-black/65 active:scale-98 border border-white/20 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md group-hover:border-amber-400/60"
+              className="w-full h-[38px] rounded-lg bg-black/45 hover:bg-black/65 active:scale-98 border border-white/20 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md group-hover:border-amber-400/60"
             >
               <BookOpen className="w-4 h-4 text-amber-400" />
               <span>{isOpening ? 'Opening Textbook...' : 'Open Book'}</span>
@@ -345,17 +369,17 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
 
         {/* 3D Multi-Layered Paper Block Edge (Simulating 400 Stacked Pages) */}
         <div 
-          className="w-5 shrink-0 rounded-r-md border-y border-r border-stone-400/40"
+          className="w-5 shrink-0 rounded-r-md border-y border-r border-stone-400/40 h-full"
           style={{
             background: 'repeating-linear-gradient(90deg, #FBF8F1, #FBF8F1 2px, #E7E5E4 2px, #E7E5E4 4px)',
             boxShadow: 'inset 3px 0 5px rgba(0,0,0,0.25), 2px 0 0 #E6E0D4, 3px 0 0 #BDB5A6, 5px 0 0 #E6E0D4, 6px 0 0 #BDB5A6'
           }}
         />
 
-        {/* Physical Die-Cut Chapter Tabs sticking out of the Right Edge */}
+        {/* Physical Die-Cut Chapter Tabs sticking out of the Right Edge (Strictly Contained within 360px) */}
         <aside 
           aria-label="Chapter navigation tabs"
-          className="absolute -right-7 top-8 bottom-8 flex flex-col justify-start gap-2 z-20"
+          className="absolute -right-7 top-4 bottom-4 max-h-[360px] flex flex-col justify-start gap-1.5 z-20 overflow-hidden"
         >
           {units.slice(0, 5).map((u, uIdx) => (
             <button
@@ -365,7 +389,7 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
                 e.stopPropagation();
                 handleBookClick(u.id);
               }}
-              className="px-1.5 py-1 rounded-r-md text-[10px] font-mono font-extrabold border-y border-r transition-all hover:translate-x-1 active:translate-x-0 shadow-md text-stone-900"
+              className="px-1.5 py-1 rounded-r-md text-[10px] font-mono font-extrabold border-y border-r transition-all hover:translate-x-1 active:translate-x-0 shadow-md text-stone-900 shrink-0"
               style={{
                 backgroundColor: uIdx % 2 === 0 ? '#FDE68A' : '#FED7AA',
                 borderColor: '#B45309',
@@ -377,7 +401,10 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
             </button>
           ))}
           {units.length > 5 && (
-            <span className="text-[9px] font-mono font-bold text-amber-400 ml-1">
+            <span 
+              className="text-[9px] font-mono font-extrabold text-amber-300 bg-stone-900/80 px-1 py-0.5 rounded-sm shadow-xs border border-amber-400/40 ml-0.5 text-center shrink-0"
+              title={`${units.length - 5} more chapters`}
+            >
               +{units.length - 5}
             </span>
           )}

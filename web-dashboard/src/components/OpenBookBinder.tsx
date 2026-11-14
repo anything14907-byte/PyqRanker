@@ -19,7 +19,8 @@ import {
   storageService,
   sortUnitsByNumber,
   getNextMissingUnitNumber,
-  parseUnitNumber
+  parseUnitNumber,
+  getUnitNum
 } from '../utils/storageService';
 import { getBookClothColor } from '../utils/bookColors';
 import { useTheme } from '../contexts/ThemeContext';
@@ -450,11 +451,54 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   const [practicePyqId, setPracticePyqId] = useState<string | null>(null);
   const [practiceAnswerDraft, setPracticeAnswerDraft] = useState<{ [id: string]: string }>({});
 
-  // Scoped data for this subject
-  const subjectTopics = useMemo(() => topics.filter(t => t.subjectId === subject.id), [topics, subject.id]);
+  // Scoped data for this subject (case-insensitive and ID-normalized match)
+  const subjectTopics = useMemo(() => {
+    const subIdLower = subject.id.toLowerCase();
+    const subNameLower = subject.name.toLowerCase();
+    return topics.filter(t => 
+      t.subjectId === subject.id || 
+      t.subjectId.toLowerCase() === subIdLower ||
+      t.subjectId.toLowerCase() === subNameLower
+    );
+  }, [topics, subject.id, subject.name]);
   const subjectQuestions = useMemo(() => questions.filter(q => q.subjectId === subject.id), [questions, subject.id]);
   const subjectVideos = useMemo(() => videos.filter(v => v.subjectId === subject.id), [videos, subject.id]);
   const subjectPdfs = useMemo(() => pdfs.filter(p => p.subjectId === subject.id), [pdfs, subject.id]);
+
+  // Helper to determine whether a topic belongs to a specific chapter/unit
+  const isTopicInUnit = useCallback((t: SyllabusTopic, u: SubjectUnit) => {
+    // 1. Direct unit ID match
+    if (t.unitId && (t.unitId === u.id || t.unitId === (u as any).chapterId)) return true;
+    if ((t as any).chapterId && (t as any).chapterId === u.id) return true;
+
+    // 2. Extracted integer number match
+    const tNum = parseUnitNumber(t.unitNumber ?? (t as any).unit ?? (t as any).chapter ?? t.unitId ?? (t as any).chapterId);
+    const uNum = parseUnitNumber(u);
+    if (tNum !== Infinity && uNum !== Infinity && tNum === uNum) return true;
+
+    // 3. Substring number match in ID (e.g. u3 vs unit-3-...)
+    if (t.unitId && u.id) {
+      const tMatch = t.unitId.match(/\d+/);
+      const uMatch = u.id.match(/\d+/);
+      if (tMatch && uMatch && parseInt(tMatch[0], 10) === parseInt(uMatch[0], 10)) return true;
+    }
+
+    // 4. Unit title / label match
+    const tLabel = String(t.unitNumber || (t as any).unitLabel || (t as any).unitTitle || '').trim().toLowerCase();
+    const uLabel = String(u.unitLabel || u.unitNumber || '').trim().toLowerCase();
+    const uTitle = String(u.title || u.name || '').trim().toLowerCase();
+    if (tLabel && (tLabel === uLabel || tLabel === uTitle)) return true;
+
+    // 5. Fallback: single unit in subject
+    if (units.length === 1 && (!tNum || tNum === Infinity || tNum === uNum)) return true;
+
+    return false;
+  }, [units]);
+
+  // Recovered topics belonging to this subject but not currently mapped to any chapter
+  const unassignedTopics = useMemo(() => {
+    return subjectTopics.filter(t => !units.some(u => isTopicInUnit(t, u)));
+  }, [subjectTopics, units, isTopicInUnit]);
 
   // Unassigned PDFs belonging to this subject but not linked to any current chapter
   const unassignedPdfs = useMemo(() => {
@@ -1420,7 +1464,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                 <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-1">
                   {units.map((unit) => {
                     const isSelected = activeUnitId === unit.id;
-                    const uTopics = subjectTopics.filter(t => t.unitId === unit.id || t.unitNumber === unit.unit || String(t.unitNumber) === String(unit.unit));
+                    const uTopics = subjectTopics.filter(t => isTopicInUnit(t, unit));
                     const uDone = uTopics.filter(t => t.completed).length;
                     const uVids = subjectVideos.filter(v => v.unitId === unit.id || v.unit === unit.unit).length;
                     const uPdfs = subjectPdfs.filter(p => p.unitId === unit.id || p.unit === unit.unit).length;
@@ -1627,6 +1671,107 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                   EXAM: {examUrgency?.formattedExamDate || 'NO DATE'} • PAGE {activeUnitId === 'all' ? '1–ALL' : '1'}
                 </span>
               </div>
+
+              {/* -------------------------------------------------------------
+                  📌 RECOVERED TOPICS & ITEMS TRAY (1-CLICK ASSIGN TO A CHAPTER)
+                  ------------------------------------------------------------- */}
+              {unassignedTopics.length > 0 && (
+                <div className="p-4 rounded-2xl border-2 border-dashed border-amber-500/50 bg-amber-500/10 space-y-3 animate-fade-slide-up">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="text-xs font-mono font-black uppercase text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                      <span className="text-sm">📌</span>
+                      <span>Recovered Topics & Items ({unassignedTopics.length})</span>
+                    </span>
+                    <span className="text-[11px] font-mono text-stone-600 dark:text-stone-400">
+                      Select a chapter from the dropdown to assign immediately
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    {unassignedTopics.map(topic => (
+                      <div 
+                        key={topic.id}
+                        className="p-3 rounded-xl bg-white dark:bg-stone-900 border border-amber-500/30 flex flex-col justify-between gap-2 shadow-xs"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onToggleTopicCompleted(topic.id);
+                                }}
+                                className="text-stone-400 hover:text-emerald-500 transition-colors shrink-0"
+                                title={topic.completed ? 'Mark pending' : 'Mark completed'}
+                              >
+                                {topic.completed ? (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-500/20" />
+                                ) : (
+                                  <Circle className="w-4 h-4" />
+                                )}
+                              </button>
+                              <span className={`text-xs font-bold leading-snug line-clamp-2 ${
+                                topic.completed ? 'line-through text-stone-400' : 'text-stone-900 dark:text-stone-100'
+                              }`}>
+                                {topic.title}
+                              </span>
+                            </div>
+
+                            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded uppercase font-bold shrink-0 ${
+                              topic.mastery === 'strong' ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
+                              topic.mastery === 'okay' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' :
+                              'bg-rose-500/20 text-rose-600 dark:text-rose-400'
+                            }`}>
+                              {topic.mastery}
+                            </span>
+                          </div>
+
+                          {topic.notes && (
+                            <p className="text-[11px] text-stone-500 dark:text-stone-400 font-serif line-clamp-2 pl-6">
+                              {topic.notes}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* 1-Click "Assign to Unit ▾" Dropdown */}
+                        <div className="flex items-center justify-between pt-2 border-t border-stone-200 dark:border-stone-800 text-xs">
+                          <span className="text-[10px] font-mono opacity-60">
+                            Unit Assignment:
+                          </span>
+                          <select
+                            className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-700 dark:text-amber-300 font-bold cursor-pointer transition-colors"
+                            defaultValue=""
+                            onChange={(e) => {
+                              const targetUnitId = e.target.value;
+                              if (!targetUnitId) return;
+                              const targetUnit = units.find(u => u.id === targetUnitId);
+                              if (!targetUnit) return;
+                              const updatedTopic: SyllabusTopic = {
+                                ...topic,
+                                unitId: targetUnit.id,
+                                unitNumber: targetUnit.unit
+                              };
+                              storageService.updateTopic(updatedTopic);
+                              if (onReorderTopics) {
+                                onReorderTopics(topics.map(t => t.id === topic.id ? updatedTopic : t));
+                              }
+                              onShowToast(`Topic assigned to ${getUnitDisplayLabel(targetUnit)}! 📌`, 'success');
+                            }}
+                          >
+                            <option value="" disabled>Assign to Unit ▾</option>
+                            {units.map(u => (
+                              <option key={u.id} value={u.id}>
+                                {getUnitDisplayLabel(u)}: {u.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* -------------------------------------------------------------
                   📂 SUBJECT-LEVEL & RECOVERED PDFS TRAY (ASSIGN TO A CHAPTER)
@@ -1860,7 +2005,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                 const uLabel = getUnitDisplayLabel(unit);
 
                 // Filter nested items for this specific chapter (match unit.id or saved unit number, never array index)
-                let cTopics = subjectTopics.filter(t => t.unitId === unit.id || t.unitNumber === unit.unit || String(t.unitNumber) === String(unit.unit));
+                let cTopics = subjectTopics.filter(t => isTopicInUnit(t, unit));
                 let cVids = subjectVideos.filter(v => v.unitId === unit.id || v.unit === unit.unit);
                 let cPdfs = subjectPdfs.filter(p => p.unitId === unit.id || p.unit === unit.unit);
                 let cPyqs = subjectQuestions.filter(q => q.unitId === unit.id || q.unit === unit.unit);

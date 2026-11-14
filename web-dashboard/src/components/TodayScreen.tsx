@@ -84,13 +84,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   // Sorting mode: date (closest exam first) or custom
   const [sortMode, setSortMode] = useState<'date' | 'custom'>('date');
 
-  // Sorted subjects: automatically sorted by time remaining (closest exam first)
+  // Sorted subjects: automatically sorted strictly by live exam time remaining (closest exam first = VOLUME 01)
   const displaySubjects = useMemo(() => {
-    if (sortMode === 'date') {
-      return sortSubjectsByExamUrgency(subjects);
-    }
-    return subjects;
-  }, [subjects, sortMode]);
+    return sortSubjectsByExamUrgency(subjects);
+  }, [subjects]);
 
   // Overall syllabus stats
   const totalTopics = topics.length;
@@ -487,7 +484,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-7 sm:gap-9 pt-4">
+        <div 
+          className="grid gap-7 sm:gap-9 pt-4 items-stretch"
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))' }}
+        >
           {displaySubjects.map((subject, idx) => (
             <TactileSubjectBook
               key={subject.id}

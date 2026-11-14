@@ -407,8 +407,10 @@ export function parseUnitNumber(unit: any): number {
     const candidates = [
       unit.unitLabel,
       unit.unitNumber,
+      unit.unit,
       unit.title,
       unit.name,
+      unit.id,
       unit.unitTitle
     ];
 
@@ -436,8 +438,19 @@ export function parseUnitNumber(unit: any): number {
 }
 
 /**
+ * Bulletproof Unit Number extractor.
+ * Returns the positive integer unit/chapter number (1, 2, 3, 4...).
+ * Falls back to fallbackIdx + 1 if unnumbered or Infinity.
+ */
+export function getUnitNum(u: any, fallbackIdx: number = 0): number {
+  const parsed = parseUnitNumber(u);
+  if (parsed !== Infinity) return parsed;
+  return fallbackIdx + 1;
+}
+
+/**
  * Always sorts units in strict ascending numerical order (Unit 1 -> Unit 2 -> Unit 3 -> Unit 4).
- * Unnumbered units fall back to title comparison.
+ * Unnumbered units fall back to title comparison with natural numeric sorting.
  */
 export function sortUnitsByNumber<T extends SubjectUnit | any>(units: T[]): T[] {
   if (!units || !Array.isArray(units)) return [];
@@ -449,7 +462,7 @@ export function sortUnitsByNumber<T extends SubjectUnit | any>(units: T[]): T[] 
     }
     const titleA = String((a as any)?.title || (a as any)?.name || '');
     const titleB = String((b as any)?.title || (b as any)?.name || '');
-    return titleA.localeCompare(titleB);
+    return titleA.localeCompare(titleB, undefined, { numeric: true, sensitivity: 'base' });
   });
 }
 
@@ -868,6 +881,17 @@ const FALLBACK_KEYS = {
   TASKS: ['pyq_hud_tasks_v2', 'pyq_tasks'],
   VIDEOS: ['pyq_hud_videos_v2'],
   PDFS: ['pyq_hud_pdfs_v2'],
+  TOPICS: [
+    'exam_hub_v3_topics',
+    'pyq_topics',
+    'studyos_topics',
+    'pyq_hud_topics_v2',
+    'exam_hub_topics',
+    'pyq_hud_topics',
+    'studyos_v1_topics',
+    'studyos_v2_topics',
+    'studyos_topics_v1'
+  ],
   FLASHCARDS: ['pyq_flashcards', 'exam_hub_flashcards', 'studyos_flashcards'],
   POMODORO_LOGS: ['pyq_pomodoro_logs', 'exam_hub_pomodoro_logs']
 };
@@ -1550,30 +1574,290 @@ export const storageService = {
   },
 
   // ==========================================
-  // SYLLABUS TOPICS TRACKER
+  // SYLLABUS TOPICS TRACKER & DATA HYDRATION
   // ==========================================
+
+  /**
+   * Universal Non-Destructive Data Hydration & Schema Rescuer:
+   * Deeply scans localStorage for all topics across all version keys,
+   * exam sessions, fallback keys, and embedded subject/unit fields.
+   * Re-links topics to units using unitId, chapterId, or unit numbers.
+   * Guarantees ZERO DATA LOSS: Never overwrites localStorage with empty arrays.
+   */
+  hydrateAllSavedData(examId?: string): { topics: SyllabusTopic[]; subjects: SubjectMeta[] } {
+    const activeExam = examId || this.getActiveExam();
+    const subjects = this.getSubjects(activeExam);
+    const key = getExamStorageKey(STORAGE_KEYS.TOPICS, activeExam);
+
+    const extractedTopics: SyllabusTopic[] = [];
+
+    // Helper to add topic to extracted list safely
+    const addRawTopic = (raw: any, fallbackSubjectId?: string, fallbackUnitId?: string, fallbackUnitNum?: number) => {
+      if (!raw) return;
+      if (typeof raw === 'string') {
+        const title = raw.trim();
+        if (!title) return;
+        const subId = fallbackSubjectId || (subjects[0]?.id || 'os');
+        const num = fallbackUnitNum || parseUnitNumber(fallbackUnitId) || 1;
+        extractedTopics.push({
+          id: `hydrated-top-${subId}-${num}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          subjectId: subId,
+          unitId: fallbackUnitId || '',
+          unitNumber: num !== Infinity ? num : undefined,
+          title,
+          completed: false,
+          mastery: 'weak',
+          notes: '',
+          pyqCount: 0
+        });
+        return;
+      }
+
+      if (typeof raw === 'object' && raw !== null) {
+        const title = String(raw.title || raw.name || raw.topic || raw.text || '').trim();
+        if (!title) return;
+        const subId = raw.subjectId || fallbackSubjectId || (subjects[0]?.id || 'os');
+        const uId = raw.unitId || raw.chapterId || fallbackUnitId;
+        const rawUnitNum = raw.unitNumber ?? raw.unit ?? raw.chapter ?? fallbackUnitNum;
+        const uNum = parseUnitNumber(rawUnitNum !== undefined ? rawUnitNum : uId);
+
+        extractedTopics.push({
+          id: String(raw.id || `hydrated-top-${subId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`),
+          subjectId: String(subId),
+          unitId: uId ? String(uId) : '',
+          unitNumber: uNum !== Infinity ? uNum : (rawUnitNum || undefined),
+          title,
+          completed: Boolean(raw.completed || raw.done || raw.isCompleted),
+          mastery: (raw.mastery === 'strong' || raw.mastery === 'okay' || raw.mastery === 'weak') ? raw.mastery : 'weak',
+          notes: String(raw.notes || raw.summary || raw.note || ''),
+          pyqCount: typeof raw.pyqCount === 'number' ? raw.pyqCount : 0,
+          videoUrls: Array.isArray(raw.videoUrls) ? raw.videoUrls : (raw.videoUrl ? [raw.videoUrl] : [])
+        });
+      }
+    };
+
+    // 1. Scan primary active key
+    try {
+      const activeData = localStorage.getItem(key);
+      if (activeData) {
+        const parsed = JSON.parse(activeData);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(t => addRawTopic(t));
+        }
+      }
+    } catch (e) {}
+
+    // 2. Scan ALL localStorage keys starting with exam_hub_v3_topics
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('exam_hub_v3_topics') && k !== key) {
+          const val = localStorage.getItem(k);
+          if (val) {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) {
+              parsed.forEach(t => addRawTopic(t));
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
+    // 3. Scan known fallback topic keys
+    for (const fbKey of FALLBACK_KEYS.TOPICS) {
+      try {
+        const fbData = localStorage.getItem(fbKey);
+        if (fbData) {
+          const parsed = JSON.parse(fbData);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(t => addRawTopic(t));
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 4. Scan bundled / backup state keys in localStorage
+    const bundleKeys = [
+      'pyq_master_state',
+      'studyos_v1',
+      'studyos_v2',
+      'pyq_full_backup',
+      'pyq_hud_master_backup',
+      'studyos_backup_state'
+    ];
+    for (const bKey of bundleKeys) {
+      try {
+        const bData = localStorage.getItem(bKey);
+        if (bData) {
+          const parsed = JSON.parse(bData);
+          if (parsed && typeof parsed === 'object') {
+            if (Array.isArray(parsed.topics)) {
+              parsed.topics.forEach((t: any) => addRawTopic(t));
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 5. Scan embedded topics inside ALL saved subjects (subject.topics, subject.syllabus, unit.topics)
+    subjects.forEach(sub => {
+      // a. Direct subject.topics
+      if (Array.isArray((sub as any).topics)) {
+        (sub as any).topics.forEach((t: any, idx: number) => {
+          addRawTopic(t, sub.id, undefined, idx + 1);
+        });
+      }
+
+      // b. Direct subject.syllabus units
+      if (Array.isArray((sub as any).syllabus)) {
+        (sub as any).syllabus.forEach((u: any) => {
+          const uTopics = u.topics || u.subtopics || u.items;
+          if (Array.isArray(uTopics)) {
+            uTopics.forEach((t: any) => {
+              addRawTopic(t, sub.id, u.id, u.unit);
+            });
+          }
+        });
+      }
+
+      // c. Direct sub.units
+      if (Array.isArray(sub.units)) {
+        sub.units.forEach(u => {
+          const uTopics = (u as any).topics || (u as any).subtopics || (u as any).items;
+          if (Array.isArray(uTopics)) {
+            uTopics.forEach((t: any) => {
+              addRawTopic(t, sub.id, u.id, u.unit);
+            });
+          }
+        });
+      }
+    });
+
+    // 6. Normalize subjectIds and re-link units for every extracted topic
+    const subjectsMap = new Map<string, SubjectMeta>();
+    subjects.forEach(s => {
+      subjectsMap.set(s.id.toLowerCase(), s);
+      subjectsMap.set(s.name.toLowerCase(), s);
+      if (s.code) subjectsMap.set(s.code.toLowerCase(), s);
+    });
+
+    const dedupedMap = new Map<string, SyllabusTopic>();
+
+    extractedTopics.forEach(top => {
+      let linkedSubject = subjects.find(s => s.id === top.subjectId);
+      if (!linkedSubject) {
+        const cand = subjectsMap.get(top.subjectId.toLowerCase());
+        if (cand) {
+          top.subjectId = cand.id;
+          linkedSubject = cand;
+        }
+      }
+
+      // Re-link unit if subject is known
+      if (linkedSubject && linkedSubject.units && linkedSubject.units.length > 0) {
+        const uList = linkedSubject.units;
+        // Try to match unit
+        let matchedUnit = uList.find(u => u.id === top.unitId || u.id === (top as any).chapterId);
+        if (!matchedUnit) {
+          const tNum = parseUnitNumber(top.unitNumber ?? (top as any).unit ?? (top as any).chapter ?? top.unitId);
+          if (tNum !== Infinity) {
+            matchedUnit = uList.find(u => parseUnitNumber(u) === tNum);
+          }
+        }
+        if (!matchedUnit && top.unitId) {
+          const tMatch = top.unitId.match(/\d+/);
+          if (tMatch) {
+            const num = parseInt(tMatch[0], 10);
+            matchedUnit = uList.find(u => parseUnitNumber(u) === num);
+          }
+        }
+        if (matchedUnit) {
+          top.unitId = matchedUnit.id;
+          top.unitNumber = matchedUnit.unit;
+        }
+      }
+
+      // De-duplicate key
+      const dedupeKey = top.id && !top.id.startsWith('hydrated-top-') 
+        ? top.id 
+        : `${top.subjectId}:::${top.unitNumber || top.unitId || 'unassigned'}:::${top.title.trim().toLowerCase()}`;
+
+      if (dedupedMap.has(dedupeKey)) {
+        const existing = dedupedMap.get(dedupeKey)!;
+        if (!existing.notes && top.notes) existing.notes = top.notes;
+        if (!existing.completed && top.completed) existing.completed = true;
+        if (existing.mastery === 'weak' && top.mastery && top.mastery !== 'weak') existing.mastery = top.mastery;
+        if (top.unitId && !existing.unitId) {
+          existing.unitId = top.unitId;
+          existing.unitNumber = top.unitNumber;
+        }
+      } else {
+        dedupedMap.set(dedupeKey, top);
+      }
+    });
+
+    const finalTopics = Array.from(dedupedMap.values());
+
+    // Non-destructive save: ONLY save if we found topics
+    if (finalTopics.length > 0) {
+      try {
+        localStorage.setItem(key, JSON.stringify(finalTopics));
+        if (activeExam === 'mid-sem') {
+          localStorage.setItem(STORAGE_KEYS.TOPICS, JSON.stringify(finalTopics));
+        }
+      } catch (e) {}
+    }
+
+    return { topics: finalTopics, subjects };
+  },
+
   getTopics(subjectId?: string, examId?: string): SyllabusTopic[] {
     const activeExam = examId || this.getActiveExam();
     const key = getExamStorageKey(STORAGE_KEYS.TOPICS, activeExam);
+    let list: SyllabusTopic[] = [];
+
     try {
       const data = localStorage.getItem(key);
       if (data !== null) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed)) {
-          return subjectId ? parsed.filter(t => t.subjectId === subjectId) : parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          list = parsed;
         }
       }
     } catch (e) {
       console.warn('Error reading topics:', e);
     }
 
-    return [];
+    // If list is empty or hydration has not yet been executed, run universal non-destructive hydrator to rescue any saved topics
+    const hydrationDone = localStorage.getItem('exam_hub_v3_topics_hydrated_v2');
+    if (!hydrationDone || list.length === 0) {
+      const hydrated = this.hydrateAllSavedData(activeExam);
+      list = hydrated.topics;
+      try {
+        localStorage.setItem('exam_hub_v3_topics_hydrated_v2', 'true');
+      } catch (e) {}
+    }
+
+    if (subjectId) {
+      const subLower = subjectId.toLowerCase();
+      return list.filter(t => t.subjectId === subjectId || t.subjectId.toLowerCase() === subLower);
+    }
+
+    return list;
   },
 
   saveTopics(topics: SyllabusTopic[], examId?: string): void {
     const activeExam = examId || this.getActiveExam();
     const key = getExamStorageKey(STORAGE_KEYS.TOPICS, activeExam);
     try {
+      // ZERO DATA LOSS GUARD: Never overwrite with empty array if existing storage has data!
+      if (!topics || topics.length === 0) {
+        const existing = localStorage.getItem(key);
+        if (existing && existing !== '[]' && existing.trim() !== '') {
+          console.warn('Blocked attempt to overwrite topics with empty array!');
+          return;
+        }
+      }
       localStorage.setItem(key, JSON.stringify(topics));
     } catch (e) {
       console.error('Error saving topics:', e);

@@ -164,3 +164,4 @@ export async function saveUnitImageMasks(id: string, masks: DiagramOcclusionMask
 export async function saveUnitImageNotes(id: string, examNotes: string): Promise<void> {
   await indexedDbService.updateUnitImageNotes(id, examNotes);
 }
+
