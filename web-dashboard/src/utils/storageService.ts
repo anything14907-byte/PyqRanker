@@ -18,6 +18,13 @@ import {
   MasterAppState
 } from '../types';
 import { INITIAL_QUESTIONS } from '../data/pyqData';
+import { 
+  STANDARD_CS_SUBJECTS, 
+  STANDARD_CS_TOPICS, 
+  STANDARD_CS_PYQS, 
+  STANDARD_FLASHCARDS,
+  findStandardSyllabus 
+} from '../data/standardSyllabus';
 
 // 10 Balanced Card Accent Theme Colors (Muted, Non-Neon)
 export const ACCENT_PALETTE = [
@@ -44,71 +51,7 @@ export function toDatetimeLocalString(date: Date): string {
   return `${YYYY}-${MM}-${DD}T${hh}:${mm}`;
 }
 
-// Generate realistic default exam dates based on current time
-const now = Date.now();
-const DEFAULT_OS_EXAM = toDatetimeLocalString(new Date(now + (3 * 24 + 8) * 3600 * 1000));   // ~3.3 days
-const DEFAULT_DBMS_EXAM = toDatetimeLocalString(new Date(now + (7 * 24 + 6) * 3600 * 1000)); // ~7.2 days
-const DEFAULT_CN_EXAM = toDatetimeLocalString(new Date(now + (11 * 24 + 9) * 3600 * 1000));  // ~11.4 days
-const DEFAULT_DSA_EXAM = toDatetimeLocalString(new Date(now + (18 * 24 + 11) * 3600 * 1000)); // ~18.5 days
-
-export const DEFAULT_SUBJECTS: SubjectMeta[] = [
-  {
-    id: 'os',
-    name: 'Operating Systems',
-    accentColor: '#3B82F6', // Royal Sapphire
-    examDate: DEFAULT_OS_EXAM,
-    iconName: 'Cpu',
-    units: [
-      { id: 'u1', unit: 1, title: 'Process Scheduling & CPU Algorithms', name: 'Process Scheduling & CPU Algorithms' },
-      { id: 'u2', unit: 2, title: 'Process Synchronization & Deadlocks', name: 'Process Synchronization & Deadlocks' },
-      { id: 'u3', unit: 3, title: 'Memory Management & Paging / TLB', name: 'Memory Management & Paging / TLB' },
-      { id: 'u4', unit: 4, title: 'Storage & Disk Scheduling', name: 'Storage & Disk Scheduling' },
-      { id: 'u5', unit: 5, title: 'Virtualization & System Security', name: 'Virtualization & System Security' },
-    ]
-  },
-  {
-    id: 'dbms',
-    name: 'Database Systems',
-    accentColor: '#F97316', // Sunset Orange
-    examDate: DEFAULT_DBMS_EXAM,
-    iconName: 'Database',
-    units: [
-      { id: 'u1', unit: 1, title: 'Relational Model & ER Architecture', name: 'Relational Model & ER Architecture' },
-      { id: 'u2', unit: 2, title: 'SQL & Normalization (1NF to BCNF)', name: 'SQL & Normalization (1NF to BCNF)' },
-      { id: 'u3', unit: 3, title: 'Transactions, ACID & Concurrency', name: 'Transactions, ACID & Concurrency' },
-      { id: 'u4', unit: 4, title: 'Indexing, B+ Trees & Query Plans', name: 'Indexing, B+ Trees & Query Plans' },
-      { id: 'u5', unit: 5, title: 'Distributed DBs & WAL Recovery', name: 'Distributed DBs & WAL Recovery' },
-    ]
-  },
-  {
-    id: 'cn',
-    name: 'Computer Networks',
-    accentColor: '#10B981', // Emerald Mint
-    examDate: DEFAULT_CN_EXAM,
-    iconName: 'Network',
-    units: [
-      { id: 'u1', unit: 1, title: 'OSI 7-Layer vs TCP/IP Models', name: 'OSI 7-Layer vs TCP/IP Models' },
-      { id: 'u2', unit: 2, title: 'Data Link Layer & Flow Control', name: 'Data Link Layer & Flow Control' },
-      { id: 'u3', unit: 3, title: 'Network Layer & Routing Protocols', name: 'Network Layer & Routing Protocols' },
-      { id: 'u4', unit: 4, title: 'Transport Layer & TCP Congestion', name: 'Transport Layer & TCP Congestion' },
-      { id: 'u5', unit: 5, title: 'Application Layer & DNS Resolution', name: 'Application Layer & DNS Resolution' },
-    ]
-  },
-  {
-    id: 'dsa',
-    name: 'Data Structures & Algorithms',
-    accentColor: '#06B6D4', // Ocean Cyan
-    examDate: DEFAULT_DSA_EXAM,
-    iconName: 'Code',
-    units: [
-      { id: 'u1', unit: 1, title: 'Asymptotic Analysis & Master Theorem', name: 'Asymptotic Analysis & Master Theorem' },
-      { id: 'u2', unit: 2, title: 'Balanced Search Trees & AVL Rotations', name: 'Balanced Search Trees & AVL Rotations' },
-      { id: 'u3', unit: 3, title: 'Priority Queues, Heaps & Hashing', name: 'Priority Queues, Heaps & Hashing' },
-      { id: 'u4', unit: 4, title: 'Graph Algorithms & Shortest Paths', name: 'Graph Algorithms & Shortest Paths' },
-      { id: 'u5', unit: 5, title: 'Dynamic Programming & 0/1 Knapsack', name: 'Dynamic Programming & 0/1 Knapsack' },
-    ]
-  }
-];
+export const DEFAULT_SUBJECTS: SubjectMeta[] = STANDARD_CS_SUBJECTS;
 
 export const DEFAULT_TASKS: StudyTask[] = [
   { id: 't-os-1', subjectId: 'os', unitId: 'u2', unit: 2, text: 'Solve Banker\'s Algorithm 10-Mark safe sequence problem', completed: false, isMission: true, createdAt: Date.now() },
@@ -222,46 +165,7 @@ export const DEFAULT_PDFS: PdfResource[] = [
   }
 ];
 
-export const DEFAULT_TOPICS: SyllabusTopic[] = [
-  // OS Topics
-  { id: 'top-os-1', subjectId: 'os', unitId: 'u1', unitNumber: 1, title: 'Process Scheduling (FCFS, SJF, Round Robin)', completed: false, mastery: 'strong', pyqCount: 4 },
-  { id: 'top-os-2', subjectId: 'os', unitId: 'u1', unitNumber: 1, title: 'Multilevel Queue & Feedback Queue Scheduling', completed: false, mastery: 'okay', pyqCount: 2 },
-  { id: 'top-os-3', subjectId: 'os', unitId: 'u1', unitNumber: 1, title: 'Convoy Effect & Context Switching Overhead', completed: false, mastery: 'weak', pyqCount: 3 },
-  { id: 'top-os-4', subjectId: 'os', unitId: 'u2', unitNumber: 2, title: "Banker's Algorithm & Deadlock Safe Sequences", completed: false, mastery: 'weak', pyqCount: 5 },
-  { id: 'top-os-5', subjectId: 'os', unitId: 'u2', unitNumber: 2, title: 'Semaphores (Wait/Signal) & Race Conditions', completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-os-6', subjectId: 'os', unitId: 'u2', unitNumber: 2, title: "Peterson's Algorithm for Mutual Exclusion", completed: false, mastery: 'okay', pyqCount: 2 },
-  { id: 'top-os-7', subjectId: 'os', unitId: 'u3', unitNumber: 3, title: 'Paging, Inverted Page Tables & TLB Hit Ratio', completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-os-8', subjectId: 'os', unitId: 'u3', unitNumber: 3, title: 'Page Replacement Algorithms (FIFO, LRU, Optimal)', completed: false, mastery: 'strong', pyqCount: 3 },
-  { id: 'top-os-9', subjectId: 'os', unitId: 'u4', unitNumber: 4, title: 'Disk Scheduling (SSTF, SCAN, C-SCAN)', completed: false, mastery: 'strong', pyqCount: 3 },
-  { id: 'top-os-10', subjectId: 'os', unitId: 'u5', unitNumber: 5, title: 'Virtualization Hypervisors & Security Rings', completed: false, mastery: 'okay', pyqCount: 1 },
-
-  // DBMS Topics
-  { id: 'top-db-1', subjectId: 'dbms', unitId: 'u1', unitNumber: 1, title: 'Relational Model & ER Architecture Mapping', completed: false, mastery: 'strong', pyqCount: 3 },
-  { id: 'top-db-2', subjectId: 'dbms', unitId: 'u2', unitNumber: 2, title: '1NF, 2NF, 3NF & BCNF Normalization', completed: false, mastery: 'weak', pyqCount: 5 },
-  { id: 'top-db-3', subjectId: 'dbms', unitId: 'u2', unitNumber: 2, title: 'Lossless Join & Functional Dependency Closure', completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-db-4', subjectId: 'dbms', unitId: 'u3', unitNumber: 3, title: 'ACID Properties & Transaction States', completed: false, mastery: 'strong', pyqCount: 3 },
-  { id: 'top-db-5', subjectId: 'dbms', unitId: 'u3', unitNumber: 3, title: 'Conflict Serializability & Precedence Graphs', completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-db-6', subjectId: 'dbms', unitId: 'u3', unitNumber: 3, title: 'Two-Phase Locking Protocol (Strict vs Rigorous 2PL)', completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-db-7', subjectId: 'dbms', unitId: 'u4', unitNumber: 4, title: 'B+ Tree Index Insertion & Deletion Mechanics', completed: false, mastery: 'okay', pyqCount: 3 },
-  { id: 'top-db-8', subjectId: 'dbms', unitId: 'u5', unitNumber: 5, title: 'Write-Ahead Logging (WAL) & ARIES Recovery', completed: false, mastery: 'weak', pyqCount: 2 },
-
-  // CN Topics
-  { id: 'top-cn-1', subjectId: 'cn', unitId: 'u1', unitNumber: 1, title: 'OSI 7-Layer vs TCP/IP Architecture', completed: false, mastery: 'strong', pyqCount: 3 },
-  { id: 'top-cn-2', subjectId: 'cn', unitId: 'u2', unitNumber: 2, title: 'Sliding Window (Go-Back-N vs Selective Repeat)', completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-cn-3', subjectId: 'cn', unitId: 'u2', unitNumber: 2, title: 'CRC Checksum & Hamming Error Detection Code', completed: false, mastery: 'okay', pyqCount: 3 },
-  { id: 'top-cn-4', subjectId: 'cn', unitId: 'u3', unitNumber: 3, title: 'IPv4 Subnetting, VLSM & CIDR Calculations', completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-cn-5', subjectId: 'cn', unitId: 'u3', unitNumber: 3, title: "Dijkstra's Link-State vs Distance Vector Routing", completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-cn-6', subjectId: 'cn', unitId: 'u4', unitNumber: 4, title: 'TCP 3-Way Handshake & Connection Termination', completed: false, mastery: 'strong', pyqCount: 4 },
-  { id: 'top-cn-7', subjectId: 'cn', unitId: 'u4', unitNumber: 4, title: 'TCP Congestion Control (Slow Start, AIMD, Fast Recovery)', completed: false, mastery: 'weak', pyqCount: 5 },
-  { id: 'top-cn-8', subjectId: 'cn', unitId: 'u5', unitNumber: 5, title: 'DNS Resolution (Iterative vs Recursive) & HTTP/2', completed: false, mastery: 'okay', pyqCount: 2 },
-
-  // DSA Topics
-  { id: 'top-dsa-1', subjectId: 'dsa', unitId: 'u1', unitNumber: 1, title: 'Asymptotic Complexities & Master Theorem', completed: false, mastery: 'strong', pyqCount: 3 },
-  { id: 'top-dsa-2', subjectId: 'dsa', unitId: 'u2', unitNumber: 2, title: 'AVL Tree 4 Rotations (LL, RR, LR, RL)', completed: false, mastery: 'weak', pyqCount: 5 },
-  { id: 'top-dsa-3', subjectId: 'dsa', unitId: 'u3', unitNumber: 3, title: 'Binary Heaps, Priority Queues & HeapSort', completed: false, mastery: 'okay', pyqCount: 3 },
-  { id: 'top-dsa-4', subjectId: 'dsa', unitId: 'u4', unitNumber: 4, title: "Dijkstra's Shortest Path & Prim's MST Algorithm", completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-dsa-5', subjectId: 'dsa', unitId: 'u5', unitNumber: 5, title: '0/1 Knapsack & Longest Common Subsequence (DP)', completed: false, mastery: 'weak', pyqCount: 4 }
-];
+export const DEFAULT_TOPICS: SyllabusTopic[] = STANDARD_CS_TOPICS;
 
 export const DEFAULT_FLASHCARDS: Flashcard[] = [];
 
@@ -1027,6 +931,14 @@ export const storageService = {
       console.warn('Error reading subjects:', e);
     }
 
+    // Default seed dataset: ensure never empty on clean load
+    if (activeExam === 'mid-sem') {
+      try {
+        this.saveSubjects(DEFAULT_SUBJECTS, 'mid-sem');
+      } catch (e) {}
+      return DEFAULT_SUBJECTS;
+    }
+
     return [];
   },
 
@@ -1647,17 +1559,27 @@ export const storageService = {
       }
     } catch (e) {}
 
-    // 2. Scan ALL localStorage keys starting with exam_hub_v3_topics
+    // 2. Scan ALL localStorage keys matching pyqranker, studyos, exam_hub, creative, pyq
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && k.startsWith('exam_hub_v3_topics') && k !== key) {
+        if (k && /(?:pyqranker|studyos|exam_hub|creative|pyq)/i.test(k) && k !== key) {
           const val = localStorage.getItem(k);
           if (val) {
-            const parsed = JSON.parse(val);
-            if (Array.isArray(parsed)) {
-              parsed.forEach(t => addRawTopic(t));
-            }
+            try {
+              const parsed = JSON.parse(val);
+              if (Array.isArray(parsed)) {
+                parsed.forEach(t => {
+                  if (t && (t.title || t.topic || (t.mastery && t.subjectId))) {
+                    addRawTopic(t);
+                  }
+                });
+              } else if (parsed && typeof parsed === 'object') {
+                if (Array.isArray(parsed.topics)) {
+                  parsed.topics.forEach((t: any) => addRawTopic(t));
+                }
+              }
+            } catch (e) {}
           }
         }
       }
@@ -1796,7 +1718,10 @@ export const storageService = {
       }
     });
 
-    const finalTopics = Array.from(dedupedMap.values());
+    let finalTopics = Array.from(dedupedMap.values());
+    if (finalTopics.length === 0 && activeExam === 'mid-sem') {
+      finalTopics = [...STANDARD_CS_TOPICS];
+    }
 
     // Non-destructive save: ONLY save if we found topics
     if (finalTopics.length > 0) {
@@ -1809,6 +1734,138 @@ export const storageService = {
     }
 
     return { topics: finalTopics, subjects };
+  },
+
+  /**
+   * Auto-Fills Standard University Syllabus Topics & PYQs for a given subject.
+   * Ensures 4 structured units (Unit 1..4), 4-6 topics per unit, and 2-3 PYQs per unit.
+   * Never overwrites existing user topics or custom edits.
+   */
+  autoFillSyllabusForSubject(subjectId: string): { topicsAdded: number; pyqsAdded: number; subject: SubjectMeta } {
+    const activeExam = this.getActiveExam();
+    const subjects = this.getSubjects(activeExam);
+    const targetSubject = subjects.find(s => s.id === subjectId) || subjects.find(s => s.id.toLowerCase() === subjectId.toLowerCase());
+    if (!targetSubject) {
+      throw new Error(`Subject with id ${subjectId} not found.`);
+    }
+
+    const { matchedSubject, topics: stdTopics, questions: stdPyqs } = findStandardSyllabus(targetSubject.name || targetSubject.code || targetSubject.id);
+
+    // 1. Ensure 4 complete units on the subject
+    let units = [...(targetSubject.units || [])];
+    const unitTitles = matchedSubject?.units?.map(u => u.title) || [
+      'Core Fundamentals & Architecture',
+      'Algorithms, Models & Analysis',
+      'Advanced Methods & System Design',
+      'Implementation, Testing & Case Studies'
+    ];
+
+    for (let uNum = 1; uNum <= 4; uNum++) {
+      if (!units.some(u => parseUnitNumber(u) === uNum)) {
+        units.push({
+          id: `${targetSubject.id}-u${uNum}`,
+          unit: uNum,
+          unitNumber: `Unit ${uNum}`,
+          unitLabel: `Unit ${uNum}`,
+          title: unitTitles[uNum - 1] || `Unit ${uNum} Advanced Topics`,
+          name: unitTitles[uNum - 1] || `Unit ${uNum} Advanced Topics`
+        });
+      }
+    }
+    units = sortUnitsByNumber(units);
+    targetSubject.units = units;
+
+    // Save updated subject
+    const updatedSubjects = subjects.map(s => s.id === targetSubject.id ? { ...s, units } : s);
+    this.saveSubjects(updatedSubjects, activeExam);
+
+    // 2. Add Standard Topics
+    const currentTopics = this.getTopics(undefined, activeExam);
+    const existingTitles = new Set(currentTopics.filter(t => t.subjectId === targetSubject.id).map(t => t.title.toLowerCase().trim()));
+    const topicsToAdd: SyllabusTopic[] = [];
+
+    if (stdTopics.length > 0) {
+      for (const st of stdTopics) {
+        if (!existingTitles.has(st.title.toLowerCase().trim())) {
+          const tNum = parseUnitNumber(st.unitNumber ?? st.unitId);
+          const matchedU = units.find(u => parseUnitNumber(u) === tNum) || units[0];
+          topicsToAdd.push({
+            ...st,
+            id: `top-${targetSubject.id}-${tNum}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            subjectId: targetSubject.id,
+            unitId: matchedU?.id || `${targetSubject.id}-u${tNum || 1}`,
+            unitNumber: matchedU?.unit || tNum || 1
+          });
+          existingTitles.add(st.title.toLowerCase().trim());
+        }
+      }
+    } else {
+      // Fallback for custom subject: create 5 high-yield topics per unit
+      for (const u of units) {
+        const uNum = parseUnitNumber(u);
+        const templateTopics = [
+          `${targetSubject.name} Principles & Theoretical Foundations`,
+          `Core Algorithms & Problem Modeling Methodologies`,
+          `Performance Metrics, Complexity & Optimization`,
+          `System Implementation, Verification & Best Practices`,
+          `Modern Frameworks & Case Study Analysis`
+        ];
+        templateTopics.forEach((tTitle, idx) => {
+          if (!existingTitles.has(tTitle.toLowerCase().trim())) {
+            topicsToAdd.push({
+              id: `top-${targetSubject.id}-${uNum}-${idx + 1}-${Date.now()}`,
+              subjectId: targetSubject.id,
+              unitId: u.id,
+              unitNumber: uNum,
+              title: tTitle,
+              completed: false,
+              mastery: idx === 0 ? 'strong' : idx < 3 ? 'okay' : 'weak',
+              notes: `Key concepts and revision summary for ${u.title}.`,
+              pyqCount: 2
+            });
+            existingTitles.add(tTitle.toLowerCase().trim());
+          }
+        });
+      }
+    }
+
+    if (topicsToAdd.length > 0) {
+      this.saveTopics([...currentTopics, ...topicsToAdd], activeExam);
+    }
+
+    // 3. Add Standard PYQs
+    const currentQuestions = this.getQuestions(activeExam);
+    const existingQuestions = new Set(currentQuestions.filter(q => q.subjectId === targetSubject.id).map(q => q.question.toLowerCase().trim()));
+    const pyqsToAdd: PYQQuestion[] = [];
+
+    if (stdPyqs.length > 0) {
+      for (const sq of stdPyqs) {
+        if (!existingQuestions.has(sq.question.toLowerCase().trim())) {
+          const qNum = sq.unit || 1;
+          const matchedU = units.find(u => parseUnitNumber(u) === qNum) || units[0];
+          pyqsToAdd.push({
+            ...sq,
+            id: `PYQ-${targetSubject.id.toUpperCase()}-${qNum}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+            subjectId: targetSubject.id,
+            subjectName: targetSubject.name,
+            unit: matchedU?.unit || qNum,
+            unitTitle: matchedU?.title || sq.unitTitle,
+            unitId: matchedU?.id
+          });
+          existingQuestions.add(sq.question.toLowerCase().trim());
+        }
+      }
+    }
+
+    if (pyqsToAdd.length > 0) {
+      this.saveQuestions([...currentQuestions, ...pyqsToAdd], activeExam);
+    }
+
+    return {
+      topicsAdded: topicsToAdd.length,
+      pyqsAdded: pyqsToAdd.length,
+      subject: targetSubject
+    };
   },
 
   getTopics(subjectId?: string, examId?: string): SyllabusTopic[] {
@@ -2067,7 +2124,8 @@ export const storageService = {
     } catch (e) {
       console.warn('Error reading flashcards:', e);
     }
-    return [];
+    // Return standard pre-loaded flashcards if none saved
+    return subjectId ? STANDARD_FLASHCARDS.filter(c => c.subjectId === subjectId) : STANDARD_FLASHCARDS;
   },
 
   saveFlashcards(cards: Flashcard[], examId?: string): void {

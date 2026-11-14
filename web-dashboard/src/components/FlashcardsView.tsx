@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SubjectMeta, Flashcard } from '../types';
 import { 
   Brain, 
@@ -85,6 +85,45 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
       setCurrentCardIndex(0);
     }
   };
+
+  // Keyboard navigation for 3D Flashcards Studio: Space (Flip), Arrows (Navigate), 1/2/3 (Rating)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement?.tagName || '').toUpperCase();
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) || isCreateOpen || editingCard || deletingCardId) {
+        return;
+      }
+
+      if (!isReviewMode || !activeCard) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsFlipped(prev => !prev);
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        setIsFlipped(false);
+        setCurrentCardIndex(prev => (prev < dueCards.length - 1 ? prev + 1 : 0));
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        setIsFlipped(false);
+        setCurrentCardIndex(prev => (prev > 0 ? prev - 1 : Math.max(0, dueCards.length - 1)));
+      } else if (isFlipped) {
+        if (e.key === '1') {
+          e.preventDefault();
+          handleRating('hard');
+        } else if (e.key === '2') {
+          e.preventDefault();
+          handleRating('good');
+        } else if (e.key === '3') {
+          e.preventDefault();
+          handleRating('easy');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isReviewMode, activeCard, isFlipped, dueCards.length, currentCardIndex, isCreateOpen, editingCard, deletingCardId]);
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -261,52 +300,99 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
                 </span>
               </div>
 
-              {/* 3D Flip Card Container */}
+              {/* 3D Flip Card Container with True Perspective */}
               <div 
-                onClick={() => setIsFlipped(!isFlipped)}
-                className="w-full min-h-[340px] sm:min-h-[400px] p-8 sm:p-12 rounded-3xl bg-paper-card dark:bg-night-card border-2 border-paper-border dark:border-night-border hover:border-emerald-500 cursor-pointer shadow-paper-card dark:shadow-night-card transition-all flex flex-col justify-between select-none relative group"
-                style={{
-                  borderColor: isFlipped ? '#10B981' : undefined
-                }}
+                className="w-full relative"
+                style={{ perspective: '1400px' }}
               >
-                {/* Card Subject & Topic Tag */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-mono bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text">
-                    {subjects.find(s => s.id === activeCard.subjectId)?.name || activeCard.subjectId} • {activeCard.topicTitle}
-                  </span>
+                <div 
+                  onClick={() => setIsFlipped(!isFlipped)}
+                  className="w-full min-h-[360px] sm:min-h-[420px] relative cursor-pointer select-none transition-transform duration-500 ease-out"
+                  style={{
+                    transformStyle: 'preserve-3d',
+                    transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
+                  }}
+                >
+                  {/* FRONT FACE */}
+                  <div 
+                    className={`w-full min-h-[360px] sm:min-h-[420px] p-8 sm:p-12 rounded-3xl bg-paper-card dark:bg-night-card border-2 border-paper-border dark:border-night-border hover:border-emerald-500 shadow-paper-card dark:shadow-night-card flex flex-col justify-between transition-colors ${
+                      isFlipped ? 'pointer-events-none' : ''
+                    }`}
+                    style={{
+                      backfaceVisibility: 'hidden',
+                      WebkitBackfaceVisibility: 'hidden'
+                    }}
+                  >
+                    {/* Card Subject & Topic Tag */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-mono bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text">
+                        {subjects.find(s => s.id === activeCard.subjectId)?.name || activeCard.subjectId} • {activeCard.topicTitle}
+                      </span>
 
-                  <span className="text-xs text-paper-muted dark:text-night-muted flex items-center gap-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                    <RotateCw className="w-3.5 h-3.5" />
-                    <span>Click to Flip</span>
-                  </span>
-                </div>
+                      <span className="text-xs text-paper-muted dark:text-night-muted flex items-center gap-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>Click or Space to Flip</span>
+                      </span>
+                    </div>
 
-                {/* Card Content (Front vs Back) */}
-                <div className="my-auto py-6 text-center">
-                  {!isFlipped ? (
-                    <div className="space-y-3">
-                      <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                        Question / Concept (Front)
-                      </div>
-                      <div className="text-xl sm:text-2xl font-extrabold text-paper-ink dark:text-night-text leading-relaxed">
-                        {activeCard.front}
+                    {/* Card Content (Front) */}
+                    <div className="my-auto py-6 text-center">
+                      <div className="space-y-3">
+                        <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                          Question / Concept (Front)
+                        </div>
+                        <div className="text-xl sm:text-2xl font-extrabold text-paper-ink dark:text-night-text leading-relaxed">
+                          {activeCard.front}
+                        </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="space-y-3 animate-fade-slide-up">
-                      <div className="text-[11px] font-bold uppercase tracking-widest text-cyan-600 dark:text-cyan-400">
-                        Model Answer / Key Points (Back)
-                      </div>
-                      <div className="text-base sm:text-lg font-medium text-paper-body dark:text-night-text leading-relaxed whitespace-pre-wrap max-w-2xl mx-auto">
-                        {activeCard.back}
+
+                    {/* Bottom Flip Indicator */}
+                    <div className="text-center text-xs text-paper-muted dark:text-night-muted font-mono">
+                      💡 Test yourself from memory • Click or press <kbd className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono font-bold">Space</kbd> to flip
+                    </div>
+                  </div>
+
+                  {/* BACK FACE */}
+                  <div 
+                    className={`absolute inset-0 w-full min-h-[360px] sm:min-h-[420px] p-8 sm:p-12 rounded-3xl bg-paper-card dark:bg-night-card border-2 border-emerald-500/80 shadow-paper-card dark:shadow-night-card flex flex-col justify-between transition-colors ${
+                      !isFlipped ? 'pointer-events-none' : ''
+                    }`}
+                    style={{
+                      backfaceVisibility: 'hidden',
+                      WebkitBackfaceVisibility: 'hidden',
+                      transform: 'rotateY(180deg)'
+                    }}
+                  >
+                    {/* Card Subject & Topic Tag */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                        {subjects.find(s => s.id === activeCard.subjectId)?.name || activeCard.subjectId} • {activeCard.topicTitle}
+                      </span>
+
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Model Answer</span>
+                      </span>
+                    </div>
+
+                    {/* Card Content (Back) */}
+                    <div className="my-auto py-6 text-center">
+                      <div className="space-y-3 animate-fade-slide-up">
+                        <div className="text-[11px] font-bold uppercase tracking-widest text-cyan-600 dark:text-cyan-400">
+                          Model Answer / Key Points (Back)
+                        </div>
+                        <div className="text-base sm:text-lg font-medium text-paper-body dark:text-night-text leading-relaxed whitespace-pre-wrap max-w-2xl mx-auto">
+                          {activeCard.back}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Bottom Flip Indicator */}
-                <div className="text-center text-xs text-paper-muted dark:text-night-muted">
-                  {!isFlipped ? '💡 Test yourself from memory, then click card to verify answer' : '🎯 Rate how well you remembered this concept below:'}
+                    {/* Bottom Flip Indicator */}
+                    <div className="text-center text-xs text-paper-muted dark:text-night-muted font-mono">
+                      🎯 Rate recall: <kbd className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono font-bold">1</kbd> Hard • <kbd className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono font-bold">2</kbd> Good • <kbd className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-mono font-bold">3</kbd> Easy
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -316,24 +402,27 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
                   <button
                     onClick={() => handleRating('hard')}
                     className="p-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-400 flex flex-col items-center justify-center gap-1 btn-tactile"
+                    title="Press 1 on keyboard"
                   >
-                    <span className="text-sm font-extrabold">🔴 Hard (Forgot)</span>
+                    <span className="text-sm font-extrabold">🔴 Hard (Forgot) [1]</span>
                     <span className="text-[10px] opacity-80">Review tomorrow (1d)</span>
                   </button>
 
                   <button
                     onClick={() => handleRating('good')}
                     className="p-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex flex-col items-center justify-center gap-1 btn-tactile"
+                    title="Press 2 on keyboard"
                   >
-                    <span className="text-sm font-extrabold">🟡 Good</span>
+                    <span className="text-sm font-extrabold">🟡 Good [2]</span>
                     <span className="text-[10px] opacity-80">Review in 3 days</span>
                   </button>
 
                   <button
                     onClick={() => handleRating('easy')}
                     className="p-4 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex flex-col items-center justify-center gap-1 btn-tactile"
+                    title="Press 3 on keyboard"
                   >
-                    <span className="text-sm font-extrabold">🟢 Easy (Mastered)</span>
+                    <span className="text-sm font-extrabold">🟢 Easy (Mastered) [3]</span>
                     <span className="text-[10px] opacity-80">Review in 7 days</span>
                   </button>
                 </div>
@@ -344,10 +433,28 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
                     className="px-6 py-3 rounded-2xl bg-emerald-600 text-white text-xs font-bold btn-tactile shadow-sm inline-flex items-center gap-2"
                   >
                     <RotateCw className="w-4 h-4" />
-                    <span>Show Answer (Flip Card)</span>
+                    <span>Show Answer (Press Space)</span>
                   </button>
                 </div>
               )}
+
+              {/* Keyboard Shortcuts Toolbar */}
+              <div className="flex flex-wrap items-center justify-center gap-2.5 py-1.5 px-3 rounded-xl bg-paper-cardElevated/70 dark:bg-night-cardElevated/70 border border-paper-border/70 dark:border-night-border/70 text-[11px] font-mono text-paper-muted dark:text-night-muted">
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-bold text-paper-ink dark:text-night-text">Space</kbd>
+                  <span>Flip</span>
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-bold text-paper-ink dark:text-night-text">← / →</kbd>
+                  <span>Navigate</span>
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 font-bold text-paper-ink dark:text-night-text">1, 2, 3</kbd>
+                  <span>Rate</span>
+                </span>
+              </div>
             </div>
           )}
 

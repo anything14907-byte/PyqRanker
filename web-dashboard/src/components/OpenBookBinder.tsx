@@ -107,6 +107,7 @@ interface OpenBookBinderProps {
   onToggleQuestionMastered: (id: string) => void;
   onSaveQuestionAnswer: (id: string, answer: string, score: number) => void;
   onAddFlashcard?: (card: Flashcard) => void;
+  onAutoFillSyllabus?: (subjectId: string) => void;
   onBackToShelf: () => void;
   onShowToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
@@ -139,6 +140,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   onToggleQuestionMastered,
   onSaveQuestionAnswer,
   onAddFlashcard,
+  onAutoFillSyllabus,
   onBackToShelf,
   onShowToast
 }) => {
@@ -873,6 +875,22 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
     }
   };
 
+  const handleAutoFillSyllabus = () => {
+    if (onAutoFillSyllabus) {
+      onAutoFillSyllabus(subject.id);
+    } else {
+      try {
+        const res = storageService.autoFillSyllabusForSubject(subject.id);
+        const updatedTopics = storageService.getTopics(undefined);
+        if (onReorderTopics) onReorderTopics(updatedTopics);
+        onShowToast(`✨ Populated ${res.topicsAdded} standard syllabus topics & ${res.pyqsAdded} PYQs for ${subject.name}!`, 'success');
+      } catch (err) {
+        console.error('Error auto-filling syllabus:', err);
+        onShowToast('Could not auto-fill syllabus', 'error');
+      }
+    }
+  };
+
   const handleCreateTopic = (unitId: string, unitIndex: number) => {
     if (!newTopicTitle.trim()) return;
     const targetUnit = units[unitIndex] || units.find(u => u.id === unitId);
@@ -1093,6 +1111,24 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
             className="underline text-[11px] hover:text-amber-500"
           >
             Show All
+          </button>
+        </div>
+      )}
+
+      {/* Empty Syllabus Auto-Fill Banner */}
+      {subjectTopics.length === 0 && (
+        <div className="w-full px-4 py-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-stone-900 dark:text-stone-100 flex flex-wrap items-center justify-between gap-3 text-xs font-bold animate-fade-in shadow-sm">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-500 animate-pulse shrink-0" />
+            <span>This subject has empty chapters. Auto-fill verified college syllabus topics and past exam questions?</span>
+          </div>
+          <button 
+            type="button" 
+            onClick={handleAutoFillSyllabus}
+            className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>✨ Auto-Fill Standard Syllabus Topics</span>
           </button>
         </div>
       )}
@@ -1638,6 +1674,17 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                     <span>+ Add Chapter / Unit</span>
                   </button>
                 )}
+
+                {/* 1-Click Auto-Fill Syllabus in TOC */}
+                <button
+                  type="button"
+                  onClick={handleAutoFillSyllabus}
+                  className="w-full py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-700 dark:text-amber-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                  title="Populate standard college syllabus topics and PYQs"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>✨ Auto-Fill Standard Syllabus</span>
+                </button>
               </div>
             )}
 
@@ -2384,6 +2431,31 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                         })}
                       </div>
 
+                      {/* Empty Chapter State with 1-Click Auto-Fill */}
+                      {cTopics.length === 0 && addTopicUnitId !== unit.id && (
+                        <div className="py-6 px-4 rounded-xl border border-dashed border-stone-300 dark:border-stone-700 text-center space-y-2.5">
+                          <p className="text-xs font-serif text-stone-500 italic">No syllabus topics in this chapter yet.</p>
+                          <div className="flex flex-wrap items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setAddTopicUnitId(unit.id)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30 flex items-center gap-1.5 transition-colors"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Add Topic</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleAutoFillSyllabus}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-stone-950 hover:bg-amber-400 flex items-center gap-1.5 shadow-sm transition-all"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>✨ Auto-Fill Standard Topics</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Inline Input to Add Topic */}
                       {addTopicUnitId === unit.id && (
                         <div className="flex items-center gap-2 p-2 rounded-xl bg-stone-200/80 dark:bg-stone-900 border border-amber-500/40">
@@ -3033,7 +3105,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                   </div>
 
                                   <div className="p-2 space-y-1">
-                                    <div className="text-[11px] font-serif font-bold truncate text-stone-900 dark:text-stone-100">
+                                    <div className="text-[11px] font-serif font-bold break-words line-clamp-2 text-stone-900 dark:text-stone-100" title={img.title}>
                                       {img.title}
                                     </div>
                                     <div className="flex items-center justify-between text-[10px] font-mono opacity-60">

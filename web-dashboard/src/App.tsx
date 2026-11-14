@@ -651,6 +651,20 @@ function DashboardContent() {
     broadcastLiveState();
   };
 
+  const handleAutoFillSyllabus = (subjectId: string) => {
+    try {
+      const res = storageService.autoFillSyllabusForSubject(subjectId);
+      setSubjects(storageService.getSubjects(activeExamId));
+      setTopics(storageService.getTopics(undefined, activeExamId));
+      setQuestions(storageService.getQuestions());
+      broadcastLiveState();
+      showToast(`✨ Populated ${res.topicsAdded} verified curriculum topics & ${res.pyqsAdded} PYQs for ${res.subject.name}!`, 'success');
+    } catch (err) {
+      console.error('Error auto-filling syllabus:', err);
+      showToast('Could not auto-fill syllabus', 'error');
+    }
+  };
+
   // ==========================================
   // QUESTION HANDLERS
   // ==========================================
@@ -947,6 +961,7 @@ function DashboardContent() {
               onToggleQuestionMastered={handleToggleMastered}
               onSaveQuestionAnswer={handleSaveAnswer}
               onAddFlashcard={handleAddFlashcard}
+              onAutoFillSyllabus={handleAutoFillSyllabus}
               onBackToShelf={() => {
                 setActivePdfIdForReader(undefined);
                 handleSelectView('today');

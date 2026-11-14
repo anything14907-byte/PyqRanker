@@ -93,13 +93,13 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
       {/* 3D HARDCOVER BOOK BODY (Stripe Press Craftsmanship) */}
       <div 
         className={`relative w-full rounded-r-2xl rounded-l-md cursor-pointer flex transition-all duration-500 ease-out ${
-          isOpening ? 'scale-105 -translate-y-3' : 'hover:-translate-y-1.5'
+          isOpening ? 'scale-105 -translate-y-3' : 'hover:-translate-y-2 hover:[transform:rotateY(-10deg)]'
         }`}
         style={{
           transformStyle: 'preserve-3d',
-          height: '410px',
-          minHeight: '410px',
-          maxHeight: '410px',
+          height: '430px',
+          minHeight: '430px',
+          maxHeight: '430px',
           boxShadow: '12px 22px 35px -8px rgba(0, 0, 0, 0.5), 2px 4px 8px rgba(0, 0, 0, 0.3)'
         }}
         onClick={() => handleBookClick()}
@@ -173,8 +173,8 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
             </div>
           )}
 
-          {/* ZONE 1: HEADER ZONE (96px fixed) */}
-          <div className="h-[96px] min-h-[96px] max-h-[96px] flex flex-col justify-between overflow-hidden">
+          {/* ZONE 1: HEADER ZONE (102px fixed) */}
+          <div className="h-[102px] min-h-[102px] max-h-[102px] flex flex-col justify-between overflow-hidden">
             {/* Top Row: Volume Badge + Tools */}
             <div className="flex items-center justify-between gap-2 border-b border-white/15 pb-2">
               <div className="flex items-center gap-2">
@@ -220,14 +220,14 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
               </div>
             </div>
 
-            {/* Subject Title clamped to max 2 lines + subtitle */}
+            {/* Subject Title clamped up to 3 lines + subtitle */}
             <div className="my-auto py-0.5">
               <h3 
-                className="text-base sm:text-lg font-serif font-black text-white tracking-tight leading-snug drop-shadow-md line-clamp-2"
+                className="text-base sm:text-lg font-serif font-black text-white tracking-tight leading-snug drop-shadow-md line-clamp-3 break-words"
                 style={{
                   textShadow: '0 2px 4px rgba(0,0,0,0.5)',
                   display: '-webkit-box',
-                  WebkitLineClamp: 2,
+                  WebkitLineClamp: 3,
                   WebkitBoxOrient: 'vertical',
                   overflow: 'hidden'
                 }}
@@ -245,13 +245,13 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
             </div>
           </div>
 
-          {/* ZONE 2: CHRONOMETER TIMER BAND (76px fixed, 2-Row Instrument Layout) */}
+          {/* ZONE 2: CHRONOMETER TIMER BAND (78px fixed, 2-Row Instrument Layout) */}
           <div 
             onClick={(e) => {
               e.stopPropagation();
               onEditExamDate(subject);
             }}
-            className="w-full h-[76px] min-h-[76px] max-h-[76px] px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 group/band hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between overflow-hidden"
+            className="w-full h-[78px] min-h-[78px] max-h-[78px] px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 group/band hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between overflow-hidden"
             style={{
               backgroundColor: 'rgba(10, 12, 16, 0.55)',
               border: '1px solid rgba(255, 255, 255, 0.10)',
@@ -312,8 +312,8 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
             </div>
           </div>
 
-          {/* ZONE 3: PROGRESS & MASTERY BAR ZONE (104px fixed) */}
-          <div className="h-[104px] min-h-[104px] max-h-[104px] pt-2 border-t border-white/15 flex flex-col justify-between overflow-hidden">
+          {/* ZONE 3: PROGRESS & MASTERY BAR ZONE (108px fixed) */}
+          <div className="h-[108px] min-h-[108px] max-h-[108px] pt-2 border-t border-white/15 flex flex-col justify-between overflow-hidden">
             <div className="flex items-center justify-between text-[11px] font-mono">
               <span className="text-white/90 font-bold">{progressPct}% Mastered</span>
               <div className="flex items-center gap-1.5">
@@ -376,12 +376,12 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
           }}
         />
 
-        {/* Physical Die-Cut Chapter Tabs sticking out of the Right Edge (Strictly Contained within 360px) */}
+        {/* Physical Die-Cut Chapter Tabs sticking out of the Right Edge (Ch 1 - Ch 4 + +N cleanly contained within 360px bounds) */}
         <aside 
           aria-label="Chapter navigation tabs"
           className="absolute -right-7 top-4 bottom-4 max-h-[360px] flex flex-col justify-start gap-1.5 z-20 overflow-hidden"
         >
-          {units.slice(0, 5).map((u, uIdx) => (
+          {units.slice(0, 4).map((u, uIdx) => (
             <button
               key={u.id}
               type="button"
@@ -400,12 +400,12 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
               <span>{getUnitShortBadge(u)}</span>
             </button>
           ))}
-          {units.length > 5 && (
+          {units.length > 4 && (
             <span 
               className="text-[9px] font-mono font-extrabold text-amber-300 bg-stone-900/80 px-1 py-0.5 rounded-sm shadow-xs border border-amber-400/40 ml-0.5 text-center shrink-0"
-              title={`${units.length - 5} more chapters`}
+              title={`${units.length - 4} more chapters`}
             >
-              +{units.length - 5}
+              +{units.length - 4}
             </span>
           )}
         </aside>
