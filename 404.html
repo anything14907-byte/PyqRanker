@@ -6,8 +6,8 @@
     <link rel="apple-touch-icon" href="./icon.svg" />
     <link rel="manifest" href="./manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FAF8F5" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#090D16" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F5F5F5" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121212" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Study OS — Academic &amp; Exam Prep Command Center</title>
@@ -42,9 +42,14 @@
       }
       (function() {
         try {
-          var saved = localStorage.getItem('pyq_ranker_theme_v1');
-          var theme = (saved === 'light' || saved === 'dark') ? saved : 'dark';
-          document.documentElement.setAttribute('data-theme', theme);
+          var params = new URLSearchParams(window.location.search);
+          var urlTheme = params.get('theme');
+          var saved = (urlTheme === 'light' || urlTheme === 'liquid-light') ? 'light' : 
+                      (urlTheme === 'dark' || urlTheme === 'liquid-dark') ? 'dark' : 
+                      localStorage.getItem('pyq_ranker_theme_v1') || 
+                      (localStorage.getItem('pyq_visual_mode_v2') === 'liquid-light' ? 'light' : 'dark');
+          var theme = (saved === 'light') ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', theme === 'light' ? 'liquid-light' : 'liquid-dark');
           if (theme === 'dark') {
             document.documentElement.classList.add('dark');
             document.documentElement.classList.remove('light');
@@ -73,8 +78,8 @@
         box-sizing: border-box !important;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DSBqkc1r.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-QkkN2wUB.css">
+    <script type="module" crossorigin src="./assets/index-DpK1ke0D.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-syi0WVqE.css">
   </head>
   <body class="bg-paper-bg dark:bg-night-bg text-paper-body dark:text-night-text min-h-screen antialiased selection:bg-[#3F7D5F] selection:text-[#F8F6F0] dark:selection:bg-[#60A5FA] dark:selection:text-[#0F172A] transition-colors duration-200">
     <noscript>
