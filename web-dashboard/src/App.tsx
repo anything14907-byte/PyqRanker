@@ -846,7 +846,7 @@ function DashboardContent() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#E5DFD3] dark:bg-[#0C0E12] text-paper-ink dark:text-night-text transition-colors duration-200">
+    <div className="relative min-h-screen w-full bg-[#F5F5F5] dark:bg-[#121212] text-paper-ink dark:text-night-text transition-colors duration-200">
       <div className="relative z-10 w-full min-h-screen">
         {/* ROW 1: Studio Hardcover Navigation Bar */}
         <Navbar

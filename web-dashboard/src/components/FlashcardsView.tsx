@@ -379,7 +379,7 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
                     {/* Card Content (Back) */}
                     <div className="my-auto py-6 text-center">
                       <div className="space-y-3 animate-fade-slide-up">
-                        <div className="text-[11px] font-bold uppercase tracking-widest text-cyan-600 dark:text-cyan-400">
+                        <div className="text-[11px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
                           Model Answer / Key Points (Back)
                         </div>
                         <div className="text-base sm:text-lg font-medium text-paper-body dark:text-night-text leading-relaxed whitespace-pre-wrap max-w-2xl mx-auto">
@@ -401,10 +401,10 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
                 <div className="grid grid-cols-3 gap-3 animate-fade-slide-up">
                   <button
                     onClick={() => handleRating('hard')}
-                    className="p-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-400 flex flex-col items-center justify-center gap-1 btn-tactile"
+                    className="p-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-700 dark:text-amber-400 flex flex-col items-center justify-center gap-1 btn-tactile"
                     title="Press 1 on keyboard"
                   >
-                    <span className="text-sm font-extrabold">🔴 Hard (Forgot) [1]</span>
+                    <span className="text-sm font-extrabold">🟠 Hard (Forgot) [1]</span>
                     <span className="text-[10px] opacity-80">Review tomorrow (1d)</span>
                   </button>
 
@@ -569,7 +569,7 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
           <div className="p-4 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-paper-border dark:border-night-border">
               <span className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-cyan-500" />
+                <Layers className="w-3.5 h-3.5 text-amber-500" />
                 <span>Mastery Queue</span>
               </span>
               <span className="text-[10px] font-mono font-bold text-paper-muted">

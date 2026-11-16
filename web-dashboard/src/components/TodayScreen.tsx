@@ -272,8 +272,8 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
       <div 
         className="w-full rounded-2xl p-5 sm:p-7 border shadow-xl relative overflow-hidden transition-colors"
         style={{
-          backgroundColor: isLight ? '#FAF7F0' : '#10131A',
-          borderColor: isLight ? '#DCD7CE' : '#222733'
+          backgroundColor: isLight ? '#F4EFE2' : '#1A1A1A',
+          borderColor: isLight ? '#D8D0BE' : '#2E2D29'
         }}
       >
         {/* Fine Architectural Desk Grid Accent */}
@@ -369,8 +369,8 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         <div 
           className="w-full rounded-2xl p-4 sm:p-5 border shadow-md transition-colors space-y-3"
           style={{
-            backgroundColor: isLight ? '#FAF7F0' : '#10131A',
-            borderColor: isLight ? '#DCD7CE' : '#222733'
+            backgroundColor: isLight ? '#F4EFE2' : '#1A1A1A',
+            borderColor: isLight ? '#D8D0BE' : '#2E2D29'
           }}
         >
           <div className="flex items-center justify-between">
@@ -461,8 +461,8 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         <div 
           className="w-full p-12 text-center rounded-2xl border border-dashed flex flex-col items-center justify-center gap-3 transition-colors"
           style={{
-            backgroundColor: isLight ? '#FAF7F0' : '#10131A',
-            borderColor: isLight ? '#DCD7CE' : '#222733'
+            backgroundColor: isLight ? '#F4EFE2' : '#1A1A1A',
+            borderColor: isLight ? '#D8D0BE' : '#2E2D29'
           }}
         >
           <BookOpen className="w-12 h-12 text-amber-500 opacity-60" />

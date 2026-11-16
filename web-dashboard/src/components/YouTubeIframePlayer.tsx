@@ -484,20 +484,20 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
   return (
     <div className="space-y-3">
       {/* Player Frame Container (Never reloaded or recreated) */}
-      <div className="aspect-video w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-black shadow-lg relative border border-paper-border dark:border-night-border group">
+      <div className="aspect-video w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-[#1A1A1A] shadow-lg relative border border-paper-border dark:border-night-border group">
         <div ref={mountRef} className="w-full h-full" />
 
         {/* Clear Overlay on Paused Video with Resume Button & Start Over Link */}
         {showOverlay && savedTimestamp > 2 && (
           <div 
-            className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-[2px] transition-all duration-300 p-4 sm:p-6 text-center select-none"
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#121212]/85 backdrop-blur-[2px] transition-all duration-300 p-4 sm:p-6 text-center select-none"
             style={{ pointerEvents: 'auto' }}
           >
             {/* Dismiss button to inspect frame/slide if desired */}
             <button
               type="button"
               onClick={() => setShowOverlay(false)}
-              className="absolute top-3 right-3 p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className="absolute top-3 right-3 p-1.5 rounded-lg text-stone-400 hover:text-stone-200 hover:bg-stone-800/40 transition-colors cursor-pointer"
               title="Dismiss overlay to view video frame"
               aria-label="Dismiss overlay"
             >
@@ -511,10 +511,10 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
 
             {/* Video Context */}
             <div className="max-w-md space-y-1 mb-4 sm:mb-5 px-3">
-              <p className="text-xs sm:text-sm font-medium text-slate-300">
+              <p className="text-xs sm:text-sm font-medium text-stone-300">
                 Paused lecture position
               </p>
-              <p className="text-sm sm:text-base font-semibold text-white/95 line-clamp-1">
+              <p className="text-sm sm:text-base font-semibold text-stone-200 line-clamp-1">
                 {videoTitle}
               </p>
             </div>
@@ -523,9 +523,9 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
             <button
               type="button"
               onClick={handleResume}
-              className="px-6 py-3 sm:px-8 sm:py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-extrabold text-sm sm:text-base flex items-center gap-2.5 shadow-xl shadow-amber-500/30 transition-all cursor-pointer focus:outline-none focus:ring-4 focus:ring-amber-500/40"
+              className="px-6 py-3 sm:px-8 sm:py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 font-extrabold text-sm sm:text-base flex items-center gap-2.5 shadow-xl shadow-amber-500/30 transition-all cursor-pointer focus:outline-none focus:ring-4 focus:ring-amber-500/40"
             >
-              <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-slate-950" />
+              <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-stone-950" />
               <span>Resume from {formatSecondsToTime(savedTimestamp)}</span>
             </button>
 
@@ -533,7 +533,7 @@ export const YouTubeIframePlayer: React.FC<YouTubeIframePlayerProps> = React.mem
             <button
               type="button"
               onClick={handleStartOver}
-              className="mt-3.5 text-xs sm:text-sm text-slate-400 hover:text-white underline underline-offset-4 decoration-slate-600 hover:decoration-white transition-colors cursor-pointer focus:outline-none"
+              className="mt-3.5 text-xs sm:text-sm text-stone-400 hover:text-stone-200 underline underline-offset-4 decoration-stone-600 hover:decoration-stone-300 transition-colors cursor-pointer focus:outline-none"
             >
               Start over
             </button>

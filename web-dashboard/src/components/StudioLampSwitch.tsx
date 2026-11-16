@@ -32,12 +32,12 @@ export const StudioLampSwitch: React.FC = () => {
         className="relative px-3 py-1.5 rounded-xl border flex items-center gap-2 select-none transition-all duration-200 active:scale-95 shadow-sm group"
         style={{
           background: isLight 
-            ? 'linear-gradient(180deg, #FDFBF7 0%, #EFE9DC 100%)' 
-            : 'linear-gradient(180deg, #1A1D24 0%, #0E1015 100%)',
-          borderColor: isLight ? '#D1C7B7' : '#333842',
+            ? 'linear-gradient(180deg, #F4EFE2 0%, #EAE4D5 100%)' 
+            : 'linear-gradient(180deg, #22211E 0%, #171614 100%)',
+          borderColor: isLight ? '#D8D0BE' : '#2E2D29',
           boxShadow: isLight 
-            ? 'inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 4px rgba(40,30,20,0.08)' 
-            : 'inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 5px rgba(0,0,0,0.45)'
+            ? 'inset 0 1px 0 rgba(250,250,250,0.9), 0 2px 4px rgba(40,30,20,0.06)' 
+            : 'inset 0 1px 0 rgba(250,250,250,0.05), 0 2px 5px rgba(0,0,0,0.45)'
         }}
         title={isLight ? 'Switch to Library Night Mode' : 'Switch to Archival Day Mode'}
       >
@@ -45,10 +45,10 @@ export const StudioLampSwitch: React.FC = () => {
         <span 
           className="w-2 h-2 rounded-full transition-all duration-300 shrink-0"
           style={{
-            backgroundColor: isLight ? '#F59E0B' : '#10B981',
+            backgroundColor: isLight ? '#B45309' : '#4ADE80',
             boxShadow: isLight 
-              ? '0 0 6px rgba(245, 158, 11, 0.9), 0 0 12px rgba(245, 158, 11, 0.4)' 
-              : '0 0 7px rgba(16, 185, 129, 0.95), 0 0 14px rgba(16, 185, 129, 0.5)'
+              ? '0 0 6px rgba(180, 83, 9, 0.8), 0 0 12px rgba(180, 83, 9, 0.35)' 
+              : '0 0 7px rgba(74, 222, 128, 0.95), 0 0 14px rgba(74, 222, 128, 0.5)'
           }}
         />
 

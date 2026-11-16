@@ -985,10 +985,10 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
     return units.filter(u => u.id === activeUnitId);
   }, [units, activeUnitId]);
 
-  // Page Colors
-  const pageBg = isLight ? '#FAF6EE' : '#151821';
-  const pageInk = isLight ? '#111318' : '#F4EFE6';
-  const pageBorder = isLight ? '#E3DCD0' : '#2A2E39';
+  // Page Colors (Calibrated Soft Warm Sepia / Archival Paper & Dark Charcoal)
+  const pageBg = isLight ? '#F4EFE2' : '#1A1A1A';
+  const pageInk = isLight ? '#2F2F2F' : '#E8E5DE';
+  const pageBorder = isLight ? '#D8D0BE' : '#2E2D29';
 
   return (
     <div className="w-full flex flex-col gap-4 animate-fade-in select-none">
@@ -1147,13 +1147,20 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
           className="w-full min-h-[82vh] rounded-[16px] flex flex-col lg:flex-row overflow-hidden relative"
           style={{
             backgroundColor: pageBg,
-            boxShadow: `
-              3px 0 0 #E6E0D4,
-              4px 0 0 #BDB5A6,
-              7px 0 0 #E6E0D4,
-              8px 0 0 #BDB5A6,
-              11px 0 0 #E6E0D4,
+            boxShadow: isLight ? `
+              3px 0 0 #D8D0BE,
+              4px 0 0 #C4BAA6,
+              7px 0 0 #D8D0BE,
+              8px 0 0 #C4BAA6,
+              11px 0 0 #D8D0BE,
               12px 0 0 #9E9687
+            ` : `
+              3px 0 0 #2A2926,
+              4px 0 0 #1E1D1A,
+              7px 0 0 #2A2926,
+              8px 0 0 #1E1D1A,
+              11px 0 0 #2A2926,
+              12px 0 0 #161513
             `
           }}
         >
@@ -2342,7 +2349,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                         onSetTopicMastery(topic.id, 'weak');
                                       }}
                                       className={`px-1.5 py-0.5 rounded font-bold transition-colors ${
-                                        isWeak ? 'bg-red-500 text-white' : 'opacity-60 hover:opacity-100'
+                                        isWeak ? 'bg-[#FB923C] text-stone-950 shadow-xs' : 'opacity-60 hover:opacity-100'
                                       }`}
                                     >
                                       Weak
@@ -2354,7 +2361,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                         onSetTopicMastery(topic.id, 'okay');
                                       }}
                                       className={`px-1.5 py-0.5 rounded font-bold transition-colors ${
-                                        isOkay ? 'bg-amber-500 text-stone-950' : 'opacity-60 hover:opacity-100'
+                                        isOkay ? 'bg-[#FACC15] text-stone-950 shadow-xs' : 'opacity-60 hover:opacity-100'
                                       }`}
                                     >
                                       Okay
@@ -2366,7 +2373,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                         onSetTopicMastery(topic.id, 'strong');
                                       }}
                                       className={`px-1.5 py-0.5 rounded font-bold transition-colors ${
-                                        isStrong ? 'bg-emerald-500 text-white' : 'opacity-60 hover:opacity-100'
+                                        isStrong ? 'bg-[#22C55E] dark:bg-[#4ADE80] text-stone-950 shadow-xs' : 'opacity-60 hover:opacity-100'
                                       }`}
                                     >
                                       Strong

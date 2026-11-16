@@ -69,24 +69,24 @@ function openDB(): Promise<IDBDatabase> {
 // Generate demo files so the dashboard is immediately rich and useful
 function createDemoSvgDataUrl(title: string, subtitle: string, color: string): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
-    <rect width="800" height="1000" fill="#0A0F24"/>
-    <rect x="20" y="20" width="760" height="960" rx="16" fill="#0F172A" stroke="${color}" stroke-width="2"/>
+    <rect width="800" height="1000" fill="#121212"/>
+    <rect x="20" y="20" width="760" height="960" rx="16" fill="#1A1A1A" stroke="${color}" stroke-width="2"/>
     <circle cx="400" cy="200" r="80" fill="${color}" opacity="0.15"/>
     <text x="400" y="210" fill="${color}" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" text-anchor="middle">PyqRanker Document</text>
-    <line x1="80" y1="320" x2="720" y2="320" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
-    <text x="400" y="380" fill="#F8FAFC" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" text-anchor="middle">${title}</text>
-    <text x="400" y="430" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="20" text-anchor="middle">${subtitle}</text>
+    <line x1="80" y1="320" x2="720" y2="320" stroke="rgba(250,250,250,0.1)" stroke-width="2"/>
+    <text x="400" y="380" fill="#FAFAFA" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" text-anchor="middle">${title}</text>
+    <text x="400" y="430" fill="#A6A29A" font-family="system-ui, sans-serif" font-size="20" text-anchor="middle">${subtitle}</text>
     
-    <rect x="80" y="490" width="640" height="140" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)"/>
+    <rect x="80" y="490" width="640" height="140" rx="12" fill="rgba(250,250,250,0.03)" stroke="rgba(250,250,250,0.08)"/>
     <text x="110" y="540" fill="${color}" font-family="system-ui, sans-serif" font-size="18" font-weight="bold">KEY REVISION TOPICS:</text>
-    <text x="110" y="580" fill="#E2E8F0" font-family="monospace" font-size="16">• Core Concepts, Formulas & Exam Rubric</text>
-    <text x="110" y="610" fill="#E2E8F0" font-family="monospace" font-size="16">• Past 5-Year High Frequency Questions</text>
+    <text x="110" y="580" fill="#D6D3CB" font-family="monospace" font-size="16">• Core Concepts, Formulas & Exam Rubric</text>
+    <text x="110" y="610" fill="#D6D3CB" font-family="monospace" font-size="16">• Past 5-Year High Frequency Questions</text>
     
-    <rect x="80" y="660" width="640" height="240" rx="12" fill="rgba(255,255,255,0.02)"/>
-    <text x="110" y="710" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="15">Stored locally in your browser's IndexedDB.</text>
-    <text x="110" y="740" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="15">Full screen zoom, rename, tab moving and done-tracking enabled.</text>
+    <rect x="80" y="660" width="640" height="240" rx="12" fill="rgba(250,250,250,0.02)"/>
+    <text x="110" y="710" fill="#A6A29A" font-family="system-ui, sans-serif" font-size="15">Stored locally in your browser's IndexedDB.</text>
+    <text x="110" y="740" fill="#A6A29A" font-family="system-ui, sans-serif" font-size="15">Full screen zoom, rename, tab moving and done-tracking enabled.</text>
     <circle cx="400" cy="830" r="30" fill="${color}" opacity="0.3"/>
-    <text x="400" y="838" fill="#FFFFFF" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" text-anchor="middle">✓</text>
+    <text x="400" y="838" fill="#FAFAFA" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" text-anchor="middle">✓</text>
   </svg>`;
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }

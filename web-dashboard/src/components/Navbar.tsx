@@ -52,8 +52,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header 
       className="sticky top-0 z-40 w-full max-w-[100vw] border-b shadow-sm print:hidden transition-colors select-none"
       style={{
-        backgroundColor: isLight ? '#FAF7F0' : '#0C0E12',
-        borderColor: isLight ? '#DCD7CE' : '#222733'
+        backgroundColor: isLight ? '#F4EFE2' : '#121212',
+        borderColor: isLight ? '#D8D0BE' : '#2E2D29'
       }}
     >
       <div className="w-full px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3 sm:gap-6">
@@ -65,7 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="Study OS — Academic Exam & Syllabus Command Hub"
         >
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-stone-700 to-amber-600 p-[1.5px] shadow-sm group-hover:scale-105 transition-transform">
-            <div className="w-full h-full bg-[#0C0E12] rounded-[10px] flex items-center justify-center">
+            <div className="w-full h-full bg-[#1A1A1A] rounded-[10px] flex items-center justify-center">
               <span className="text-sm">📖</span>
             </div>
           </div>

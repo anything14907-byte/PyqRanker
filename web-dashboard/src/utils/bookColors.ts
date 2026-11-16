@@ -18,9 +18,9 @@ export const BOOK_CLOTH_COLORS: BookClothColor[] = [
   },
   {
     id: 'navy',
-    name: 'Royal Navy',
-    hex: '#1E3A8A',
-    spineHex: '#172554',
+    name: 'Prussian Indigo',
+    hex: '#1E2B37',
+    spineHex: '#151E27',
     foilColor: '#FDE047',
     textLight: true
   },
@@ -51,17 +51,17 @@ export const BOOK_CLOTH_COLORS: BookClothColor[] = [
   {
     id: 'teal',
     name: 'Teal Cloth',
-    hex: '#0F766E',
-    spineHex: '#134E4A',
-    foilColor: '#CCFBF1',
+    hex: '#1B5E55',
+    spineHex: '#12423C',
+    foilColor: '#FDE68A',
     textLight: true
   },
   {
     id: 'charcoal',
-    name: 'Charcoal Slate',
-    hex: '#334155',
-    spineHex: '#1E293B',
-    foilColor: '#E2E8F0',
+    name: 'Warm Charcoal',
+    hex: '#2B2A27',
+    spineHex: '#1E1D1A',
+    foilColor: '#E8E5DE',
     textLight: true
   },
   {

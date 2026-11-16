@@ -20,6 +20,12 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeMode, setThemeModeState] = useState<VisualMode>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlTheme = params.get('theme');
+      if (urlTheme === 'light' || urlTheme === 'liquid-light') return 'liquid-light';
+      if (urlTheme === 'dark' || urlTheme === 'liquid-dark') return 'liquid-dark';
+    }
     const savedMode = localStorage.getItem('pyq_visual_mode_v2');
     if (savedMode === 'liquid-dark' || savedMode === 'liquid-light' || savedMode === 'pro-cyber') {
       return savedMode;
@@ -65,7 +71,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('pyq_ranker_theme_v1', theme);
 
     // Sync browser theme-color meta tag with active theme
-    const activeColor = theme === 'light' ? '#FAF8F5' : '#090D16';
+    const activeColor = theme === 'light' ? '#F5F5F5' : '#121212';
     const metaTags = document.querySelectorAll('meta[name="theme-color"]');
     if (metaTags.length > 0) {
       metaTags.forEach(tag => tag.setAttribute('content', activeColor));

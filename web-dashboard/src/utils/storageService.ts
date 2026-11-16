@@ -26,17 +26,17 @@ import {
   findStandardSyllabus 
 } from '../data/standardSyllabus';
 
-// 10 Balanced Card Accent Theme Colors (Muted, Non-Neon)
+// 10 Ergonomic Warm Accent Theme Colors (Low Blue-Light, Ambient Room Harmony)
 export const ACCENT_PALETTE = [
-  { name: 'Muted Slate Blue', hex: '#3B6A94' },
+  { name: 'Warm Amber-Gold', hex: '#B45309' },
   { name: 'Forest Sage', hex: '#3F7D5F' },
   { name: 'Deep Teal', hex: '#2A7B88' },
   { name: 'Warm Ochre', hex: '#B8892F' },
-  { name: 'Terracotta', hex: '#B25A4E' },
-  { name: 'Steel Blue', hex: '#4B7CB0' },
-  { name: 'Muted Pine', hex: '#4F8F6A' },
+  { name: 'Terracotta', hex: '#9A3412' },
+  { name: 'Olive Bronze', hex: '#4D5620' },
+  { name: 'Botanical Pine', hex: '#15803D' },
   { name: 'Burnt Amber', hex: '#A66A2C' },
-  { name: 'Soft Charcoal', hex: '#5B6573' },
+  { name: 'Warm Charcoal', hex: '#524F48' },
   { name: 'Muted Bronze', hex: '#8C6D3B' },
 ];
 
@@ -597,7 +597,7 @@ export function getExamUrgencyColor(examDateString?: string | null): ExamUrgency
       fractionalDays: 0,
       hasDate: true,
       hue: 0,
-      hslColor: '#B25A4E', // Muted Terracotta (Weak/Urgent)
+      hslColor: '#78736A', // Warm Charcoal (Passed)
       isUrgent: true,
       statusLabel: 'Exam passed',
       formattedCountdown: '0d : 0h : 0m : 0s',
@@ -629,7 +629,7 @@ export function getExamUrgencyColor(examDateString?: string | null): ExamUrgency
     isUrgent = true;
   }
 
-  const hslColor = fractionalDays >= 15 ? '#4F8F6A' : fractionalDays > 5 ? '#B8892F' : '#B25A4E';
+  const hslColor = fractionalDays >= 15 ? '#22C55E' : fractionalDays > 5 ? '#FACC15' : '#FB923C';
   const formattedCountdown = `${days}d : ${hours}h : ${minutes}m : ${seconds}s`;
 
   return {

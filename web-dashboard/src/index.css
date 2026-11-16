@@ -6,100 +6,104 @@
    STUDIO OS: SOLID ARCHITECTURAL 60FPS THEME SYSTEM (ZERO GLASS BLUR LAG)
    ========================================================================= */
 
-/* 1. DAY MODE: Sunlit Archival Library (Warm Cream & Ink) */
+/* 1. DAY MODE: Sunlit Archival Library (Warm Off-White, Sepia & Dark Charcoal Ink) */
 :root, .light, [data-theme="light"], [data-theme="liquid-light"] {
-  --bg-canvas: #E5DFD3; /* Solid Warm Architectural Sandstone */
-  --bg-desk: #E5DFD3;
-  --bg-card: #FBF8F1;   /* Warm Cream Book Paper */
-  --bg-card-elevated: #F5EFE1;
-  --bg-card-hover: #FFFFFF;
-  --bg-well: #E9E3D5;
-  --surface-card: #FBF8F1;
-  --surface-hover: #F5EFE1;
-  --surface-input: #FFFFFF;
+  --bg-canvas: #F5F5F5; /* Warm Off-White daylight canvas */
+  --bg-desk: #F5F5F5;
+  --bg-ambient: #F2EFE9;
+  --bg-card: #F4EFE2;   /* Soft Warm Sepia / Archival Paper */
+  --bg-card-elevated: #FAFAFA; /* Subtle raised controls */
+  --bg-card-hover: #FAFAFA;
+  --bg-well: #EAE4D5;   /* Warm Sand sunken well */
+  --surface-card: #F4EFE2;
+  --surface-hover: #FAFAFA;
+  --surface-input: #FAFAFA;
 
-  --border-color: #D6CEBE;
-  --border-highlight: #E5DFD3;
+  --border-color: #D8D0BE; /* Warm stone borders */
+  --border-highlight: #EAE4D5;
   --border-hover: #B45309;
-  --border-well: #CDC4B3;
+  --border-well: #D8D0BE;
 
-  /* Typography: Deep Fountain-Pen Black Ink (#111318) for razor-sharp reading */
-  --text-primary: #111318;
-  --text-body: #111318;
-  --text-secondary: #44403C;
-  --text-muted: #78716C;
+  /* Typography: Dark Charcoal Gray (#2F2F2F) for strain-free contrast */
+  --text-primary: #2F2F2F;
+  --text-body: #2F2F2F;
+  --text-secondary: #524F48; /* Warm Graphite */
+  --text-muted: #78736A;
 
-  /* Architectural Accents: Brass-Gold & Amber */
+  /* Architectural Accents: Deep Botanical Green & Warm Amber-Gold */
   --accent-main: #B45309;
   --accent-hover: #92400E;
   --accent-champagne: #D97706;
-  --accent-jade: #10B981;
-  --accent-crimson: #EF4444;
+  --accent-jade: #15803D;
+  --accent-green: #15803D;
+  --accent-crimson: #C2410C; /* Warm Rust/Terracotta instead of harsh red */
 
-  --btn-bg: #1C1917;
-  --btn-text: #FBF8F1;
-  --btn-hover: #292524;
+  --btn-bg: #2F2F2F;
+  --btn-text: #F5F5F5;
+  --btn-hover: #1A1A1A;
 
   --accent-link: #B45309;
   --focus-outline: #B45309;
 
-  --shadow-card: 0 4px 12px rgba(41, 37, 36, 0.08), 0 1px 3px rgba(41, 37, 36, 0.05);
-  --shadow-card-hover: 0 10px 25px rgba(41, 37, 36, 0.12), 0 2px 6px rgba(41, 37, 36, 0.06);
-  --shadow-well: inset 0 2px 4px rgba(41, 37, 36, 0.06);
-  --shadow-btn: 0 2px 4px rgba(41, 37, 36, 0.12);
-  --shadow-btn-active: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 4px 12px rgba(47, 47, 47, 0.06), 0 1px 3px rgba(47, 47, 47, 0.04);
+  --shadow-card-hover: 0 10px 25px rgba(47, 47, 47, 0.10), 0 2px 6px rgba(47, 47, 47, 0.05);
+  --shadow-well: inset 0 2px 4px rgba(47, 47, 47, 0.06);
+  --shadow-btn: 0 2px 4px rgba(47, 47, 47, 0.10);
+  --shadow-btn-active: inset 0 1px 2px rgba(26, 26, 26, 0.2);
 
-  --status-done: #10B981;
-  --status-okay: #F59E0B;
-  --status-weak: #EF4444;
+  --status-done: #15803D;
+  --status-okay: #B45309;
+  --status-weak: #C2410C;
 }
 
-/* 2. NIGHT MODE: Midnight Architect's Desk (Warm Lamp Glow, Solid Deep Obsidian) */
+/* 2. NIGHT MODE: Matte Charcoal & Low-Blue-Light Phosphor (Zero Navy/Cyan Glare) */
 .dark, [data-theme="dark"], [data-theme="liquid-dark"], [data-theme="pro-cyber"] {
-  --bg-canvas: #0C0E12; /* Solid Deep Obsidian Matte */
-  --bg-desk: #0C0E12;
-  --bg-card: #161920;   /* Warm Dark Espresso Parchment */
-  --bg-card-elevated: #1C202A;
-  --bg-card-hover: #222733;
-  --bg-well: #10131A;
-  --surface-card: #161920;
-  --surface-hover: #1C202A;
-  --surface-input: #10131A;
+  --bg-canvas: #121212; /* True Neutral Matte Dark Gray */
+  --bg-desk: #121212;
+  --bg-ambient: #121212;
+  --bg-card: #1A1A1A;   /* Soft Calibrated Charcoal */
+  --bg-card-elevated: #22211E; /* Warm Dark Umber-Gray */
+  --bg-card-hover: #292825;
+  --bg-well: #181715;   /* Sunken warm well */
+  --surface-card: #1A1A1A;
+  --surface-hover: #22211E;
+  --surface-input: #1A1A1A;
 
-  --border-color: #2D3139;
-  --border-highlight: #3F4450;
-  --border-hover: #F59E0B;
-  --border-well: #20242E;
+  --border-color: #2E2D29; /* Subtle neutral borders */
+  --border-highlight: #3A3934;
+  --border-hover: #FACC15;
+  --border-well: #2E2D29;
 
-  /* Typography: Crisp Cream-Ivory ink (#F3EFE6) and Brass-Gold (#E5B84B) */
-  --text-primary: #F3EFE6;
-  --text-body: #E7E5E4;
-  --text-secondary: #A8A29E;
-  --text-muted: #78716C;
+  /* Typography: Soft Warm Off-White / Light Gray */
+  --text-primary: #E8E5DE;
+  --text-body: #D6D3CB;
+  --text-secondary: #A6A29A; /* Warm Stone Gray */
+  --text-muted: #807C74;
 
-  /* Accents */
-  --accent-main: #F59E0B;
-  --accent-hover: #D97706;
-  --accent-champagne: #F59E0B;
-  --accent-jade: #10B981;
-  --accent-crimson: #EF4444;
+  /* Luminosity-Peak Accents (Phosphor Green #4ADE80 & Luminosity Yellow #FACC15) */
+  --accent-main: #FACC15;
+  --accent-hover: #EAB308;
+  --accent-champagne: #FACC15;
+  --accent-jade: #4ADE80;
+  --accent-green: #4ADE80;
+  --accent-crimson: #FB923C; /* Warm Soft Orange / Amber (Zero fatiguing pure red) */
 
-  --btn-bg: #F59E0B;
-  --btn-text: #0C0E12;
-  --btn-hover: #D97706;
+  --btn-bg: #FACC15;
+  --btn-text: #121212;
+  --btn-hover: #EAB308;
 
-  --accent-link: #F59E0B;
-  --focus-outline: #F59E0B;
+  --accent-link: #FACC15;
+  --focus-outline: #FACC15;
 
-  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --shadow-card-hover: 0 14px 35px rgba(0, 0, 0, 0.65);
-  --shadow-well: inset 0 2px 6px rgba(0, 0, 0, 0.6);
-  --shadow-btn: 0 2px 6px rgba(0, 0, 0, 0.4);
-  --shadow-btn-active: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 8px 24px rgba(18, 18, 18, 0.65);
+  --shadow-card-hover: 0 14px 35px rgba(18, 18, 18, 0.85);
+  --shadow-well: inset 0 2px 6px rgba(18, 18, 18, 0.7);
+  --shadow-btn: 0 2px 6px rgba(18, 18, 18, 0.5);
+  --shadow-btn-active: inset 0 1px 3px rgba(18, 18, 18, 0.7);
 
-  --status-done: #10B981;
-  --status-okay: #F59E0B;
-  --status-weak: #EF4444;
+  --status-done: #4ADE80;
+  --status-okay: #FACC15;
+  --status-weak: #FB923C;
 }
 
 @layer base {

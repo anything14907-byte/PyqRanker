@@ -71,14 +71,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {/* "More" Drawer for Mobile (Liquid Glass Sheet) */}
       {isMoreOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/80 animate-fade-slide-up">
-          <div className="p-6 rounded-t-3xl bg-paper-card/95 dark:bg-[#0c1222]/95 border-t border-white/20 dark:border-white/10 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-2 border-b border-paper-border dark:border-white/10">
-              <span className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-cyan-400">
+          <div className="p-6 rounded-t-3xl bg-paper-card/95 dark:bg-[#1A1A1A]/95 border-t border-[#D8D0BE] dark:border-[#2E2D29] space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-paper-border dark:border-[#2E2D29]">
+              <span className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-amber-400">
                 Additional Tools & Hardware Settings
               </span>
               <button 
                 onClick={() => setIsMoreOpen(false)}
-                className="p-1.5 rounded-xl text-paper-muted hover:text-paper-ink dark:text-gray-400 dark:hover:text-white bg-paper-cardElevated/50 dark:bg-white/5"
+                className="p-1.5 rounded-xl text-paper-muted hover:text-paper-ink dark:text-stone-400 dark:hover:text-stone-200 bg-paper-cardElevated/50 dark:bg-stone-800/40"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -93,7 +93,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   className={`p-3.5 rounded-2xl border text-left flex items-center justify-between gap-2 btn-tactile min-h-[44px] ${
                     currentView === tab.id
                       ? 'bg-emerald-500/15 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold'
-                      : 'bg-paper-cardElevated dark:bg-white/5 border-paper-border dark:border-white/10 text-paper-ink dark:text-white font-semibold'
+                      : 'bg-paper-cardElevated dark:bg-stone-800/40 border-paper-border dark:border-[#2E2D29] text-paper-ink dark:text-stone-200 font-semibold'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -101,7 +101,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                     <span className="text-xs">{tab.label}</span>
                   </div>
                   {tab.badge && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500 text-black">
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500 text-stone-950 font-bold">
                       {tab.badge}
                     </span>
                   )}
@@ -113,15 +113,15 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <div className="grid grid-cols-2 gap-3 pt-1">
               <button
                 onClick={() => { setIsMoreOpen(false); onOpenBackup(); }}
-                className="p-3.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/40 text-cyan-500 dark:text-cyan-400 font-bold text-xs flex items-center justify-center gap-2 btn-tactile min-h-[44px]"
+                className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center gap-2 btn-tactile min-h-[44px]"
               >
-                <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Backup & Sync</span>
               </button>
               {onOpenInstallApp && (
                 <button
                   onClick={() => { setIsMoreOpen(false); onOpenInstallApp(); }}
-                  className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-500 font-bold text-xs flex items-center justify-center gap-2 btn-tactile min-h-[44px]"
+                  className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center justify-center gap-2 btn-tactile min-h-[44px]"
                 >
                   <Download className="w-4 h-4 text-amber-500" />
                   <span>Download App</span>
@@ -131,7 +131,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
             {/* Visual Display Mode Switcher */}
             <div className="space-y-2 pt-2">
-              <span className="text-[11px] font-bold text-paper-muted dark:text-gray-400 uppercase tracking-wide">
+              <span className="text-[11px] font-bold text-paper-muted dark:text-stone-400 uppercase tracking-wide">
                 Visual Experience Mode
               </span>
               <div className="grid grid-cols-3 gap-2">
@@ -140,12 +140,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   onClick={() => setThemeMode('liquid-dark')}
                   className={`py-2.5 px-2 rounded-xl text-xs font-bold border flex flex-col items-center justify-center gap-1 min-h-[44px] transition-all ${
                     themeMode === 'liquid-dark'
-                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-400 shadow-sm'
-                      : 'bg-paper-cardElevated dark:bg-white/5 border-paper-border dark:border-white/10 text-paper-muted dark:text-gray-400'
+                      ? 'bg-amber-500/20 border-amber-400 text-amber-500 shadow-sm'
+                      : 'bg-paper-cardElevated dark:bg-stone-800/40 border-paper-border dark:border-[#2E2D29] text-paper-muted dark:text-stone-400'
                   }`}
                 >
-                  <Droplets className="w-4 h-4 text-cyan-400" />
-                  <span className="text-[11px]">Liquid Glass</span>
+                  <Droplets className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                  <span className="text-[11px]">Library Night</span>
                 </button>
 
                 <button
@@ -154,11 +154,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   className={`py-2.5 px-2 rounded-xl text-xs font-bold border flex flex-col items-center justify-center gap-1 min-h-[44px] transition-all ${
                     themeMode === 'liquid-light'
                       ? 'bg-amber-500/20 border-amber-400 text-amber-500 shadow-sm'
-                      : 'bg-paper-cardElevated dark:bg-white/5 border-paper-border dark:border-white/10 text-paper-muted dark:text-gray-400'
+                      : 'bg-paper-cardElevated dark:bg-stone-800/40 border-paper-border dark:border-[#2E2D29] text-paper-muted dark:text-stone-400'
                   }`}
                 >
                   <Sun className="w-4 h-4 text-amber-500" />
-                  <span className="text-[11px]">Daylight</span>
+                  <span className="text-[11px]">Archival Day</span>
                 </button>
 
                 <button
@@ -167,28 +167,28 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   className={`py-2.5 px-2 rounded-xl text-xs font-bold border flex flex-col items-center justify-center gap-1 min-h-[44px] transition-all ${
                     themeMode === 'pro-cyber'
                       ? 'bg-emerald-500/20 border-emerald-400 text-emerald-400 shadow-sm'
-                      : 'bg-paper-cardElevated dark:bg-white/5 border-paper-border dark:border-white/10 text-paper-muted dark:text-gray-400'
+                      : 'bg-paper-cardElevated dark:bg-stone-800/40 border-paper-border dark:border-[#2E2D29] text-paper-muted dark:text-stone-400'
                   }`}
                 >
                   <Zap className="w-4 h-4 text-emerald-400" />
-                  <span className="text-[11px]">Pro Cyber</span>
+                  <span className="text-[11px]">Phosphor</span>
                 </button>
               </div>
             </div>
 
             {/* Motion toggle */}
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-paper-cardElevated dark:bg-white/5 border border-paper-border dark:border-white/10">
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-paper-cardElevated dark:bg-stone-800/40 border border-paper-border dark:border-[#2E2D29]">
               <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-cyan-400" />
-                <span className="text-xs font-semibold text-paper-ink dark:text-white">Fluid Aurora & Caustic Waves</span>
+                <Activity className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                <span className="text-xs font-semibold text-paper-ink dark:text-stone-200">Fluid Aurora & Caustic Waves</span>
               </div>
               <button
                 type="button"
                 onClick={() => setLiquidMotionEnabled(!liquidMotionEnabled)}
                 className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${
                   liquidMotionEnabled
-                    ? 'bg-cyan-500 text-black border-cyan-400 font-extrabold'
-                    : 'bg-transparent text-paper-muted dark:text-gray-400 border-paper-border dark:border-white/20'
+                    ? 'bg-amber-500 text-stone-950 border-amber-400 font-extrabold'
+                    : 'bg-transparent text-paper-muted dark:text-stone-400 border-paper-border dark:border-[#2E2D29]'
                 }`}
               >
                 {liquidMotionEnabled ? 'ON' : 'OFF'}
@@ -198,7 +198,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             {/* JSON Backup Button */}
             <button
               onClick={() => { setIsMoreOpen(false); onOpenBackup(); }}
-              className="w-full py-3 rounded-2xl bg-paper-cardElevated dark:bg-white/5 border border-paper-border dark:border-white/10 text-xs font-bold text-paper-ink dark:text-white flex items-center justify-center gap-2 btn-tactile min-h-[44px]"
+              className="w-full py-3 rounded-2xl bg-paper-cardElevated dark:bg-stone-800/40 border border-paper-border dark:border-[#2E2D29] text-xs font-bold text-paper-ink dark:text-stone-200 flex items-center justify-center gap-2 btn-tactile min-h-[44px]"
             >
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
               <span>Data Backup & Restore (JSON)</span>
@@ -208,7 +208,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       )}
 
       {/* Persistent Bottom Bar on Mobile (< md) - Apple Liquid Glass Dock */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FAF7F0] dark:bg-[#0C0E12] border-t border-stone-300 dark:border-stone-800 h-16 flex items-center justify-around px-2 shadow-2xl safe-area-bottom">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#F4EFE2] dark:bg-[#121212] border-t border-[#D8D0BE] dark:border-[#2E2D29] h-16 flex items-center justify-around px-2 shadow-2xl safe-area-bottom">
         {mainTabs.map(tab => {
           const isActive = currentView === tab.id;
           return (
@@ -217,14 +217,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               onClick={() => onSelectView(tab.id)}
               className={`flex flex-col items-center justify-center flex-1 py-1 transition-all min-h-[44px] ${
                 isActive 
-                  ? 'text-cyan-600 dark:text-cyan-400 font-extrabold scale-105' 
-                  : 'text-paper-muted dark:text-slate-400 font-medium'
+                  ? 'text-amber-600 dark:text-amber-400 font-extrabold scale-105' 
+                  : 'text-paper-muted dark:text-stone-400 font-medium'
               }`}
             >
               <div className="relative">
                 {tab.icon}
                 {isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-glow-cyan" />
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-amber-500" />
                 )}
               </div>
               <span className="text-[10px] mt-0.5 tracking-tight">{tab.label}</span>
@@ -237,8 +237,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           onClick={() => setIsMoreOpen(true)}
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all min-h-[44px] ${
             isMoreOpen || moreTabs.some(t => t.id === currentView)
-              ? 'text-cyan-600 dark:text-cyan-400 font-extrabold'
-              : 'text-paper-muted dark:text-slate-400 font-medium'
+              ? 'text-amber-600 dark:text-amber-400 font-extrabold'
+              : 'text-paper-muted dark:text-stone-400 font-medium'
           }`}
         >
           <div className="relative">

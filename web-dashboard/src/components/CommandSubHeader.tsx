@@ -94,12 +94,12 @@ export const CommandSubHeader: React.FC<CommandSubHeaderProps> = ({
   };
 
   return (
-    <div className="w-full px-4 sm:px-7 py-2 border-b border-stone-300 dark:border-stone-800 bg-[#FAF7F0] dark:bg-[#0C0E12] transition-colors">
+    <div className="w-full px-4 sm:px-7 py-2 border-b border-stone-300 dark:border-[#2E2D29] bg-[#F4EFE2] dark:bg-[#121212] transition-colors">
       <div className="w-full flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         
         {/* LEFT: Exam Type Segmented Glass Selector (Responsive wrap on mobile so NO pill is cut off) */}
         <div className="w-full lg:w-auto">
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 p-1 rounded-2xl bg-paper-well/60 dark:bg-white/5 border border-paper-borderWell dark:border-white/10 shadow-xs w-full sm:w-auto">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 p-1 rounded-2xl bg-paper-well/60 dark:bg-stone-900/40 border border-paper-borderWell dark:border-[#2E2D29] shadow-xs w-full sm:w-auto">
             {examSessions.map(session => {
               const isActive = session.id === activeExamId;
               const isEditing = editingExamId === session.id;
@@ -134,19 +134,19 @@ export const CommandSubHeader: React.FC<CommandSubHeaderProps> = ({
                     onClick={() => onSelectExam(session.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap active:scale-95 ${
                       isActive
-                        ? 'bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-600 dark:text-cyan-400 border border-emerald-500/40 dark:border-cyan-400/50 shadow-sm font-extrabold'
-                        : 'text-paper-muted dark:text-slate-400 hover:text-paper-ink dark:hover:text-white hover:bg-white/5 border border-transparent'
+                        ? 'bg-gradient-to-r from-emerald-500/20 to-amber-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 dark:border-emerald-400/50 shadow-sm font-extrabold'
+                        : 'text-paper-muted dark:text-stone-400 hover:text-paper-ink dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-stone-800/50 border border-transparent'
                     }`}
                   >
-                    <GraduationCap className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-500 dark:text-cyan-400' : 'text-paper-muted dark:text-slate-500'}`} />
+                    <GraduationCap className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600 dark:text-emerald-300' : 'text-paper-muted dark:text-stone-400'}`} />
                     <span>{session.name}</span>
                     {isActive && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-cyan-400 shadow-glow-cyan" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shadow-glow-emerald" />
                     )}
                   </button>
 
                   {/* Hover action menu to Rename or Delete */}
-                  <div className="hidden group-hover:flex absolute right-1 -top-2 items-center gap-0.5 bg-paper-card dark:bg-[#0c1222] border border-paper-border dark:border-white/20 rounded-lg p-0.5 shadow-md z-30">
+                  <div className="hidden group-hover:flex absolute right-1 -top-2 items-center gap-0.5 bg-paper-card dark:bg-[#1A1A1A] border border-paper-border dark:border-[#2E2D29] rounded-lg p-0.5 shadow-md z-30">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -177,16 +177,16 @@ export const CommandSubHeader: React.FC<CommandSubHeaderProps> = ({
 
             {/* + New Exam Button / Form */}
             {isCreatingExam ? (
-              <form onSubmit={handleCreateSubmit} className="flex items-center gap-1 px-2 py-1 rounded-xl bg-paper-cardElevated dark:bg-black/60 border border-cyan-500">
+              <form onSubmit={handleCreateSubmit} className="flex items-center gap-1 px-2 py-1 rounded-xl bg-paper-cardElevated dark:bg-stone-900 border border-amber-500">
                 <input
                   type="text"
                   placeholder="e.g. End Sem..."
                   value={newExamName}
                   onChange={(e) => setNewExamName(e.target.value)}
                   autoFocus
-                  className="w-24 sm:w-28 text-xs font-bold bg-transparent text-paper-ink dark:text-white focus:outline-none"
+                  className="w-24 sm:w-28 text-xs font-bold bg-transparent text-paper-ink dark:text-stone-100 focus:outline-none"
                 />
-                <button type="submit" className="p-0.5 text-cyan-400 hover:text-cyan-300">
+                <button type="submit" className="p-0.5 text-amber-500 hover:text-amber-400">
                   <Check className="w-3.5 h-3.5" />
                 </button>
                 <button type="button" onClick={() => setIsCreatingExam(false)} className="p-0.5 text-paper-muted">
@@ -196,7 +196,7 @@ export const CommandSubHeader: React.FC<CommandSubHeaderProps> = ({
             ) : (
               <button
                 onClick={() => setIsCreatingExam(true)}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-paper-muted dark:text-slate-400 hover:text-paper-ink dark:hover:text-cyan-400 hover:bg-white/5 border border-dashed border-paper-border dark:border-white/15 flex items-center gap-1 transition-all"
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-paper-muted dark:text-stone-400 hover:text-paper-ink dark:hover:text-amber-400 hover:bg-stone-200/50 dark:hover:bg-stone-800/50 border border-dashed border-paper-border dark:border-[#2E2D29] flex items-center gap-1 transition-all"
                 title="Create New Exam Session"
               >
                 <Plus className="w-3.5 h-3.5" />

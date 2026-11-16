@@ -55,24 +55,24 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
   const hasExamDate = !!(examUrgency && examUrgency.hasDate && examUrgency.fractionalDays > 0);
   const isPast = !!(examUrgency && examUrgency.hasDate && examUrgency.fractionalDays <= 0);
 
-  // Smooth Green → Yellow → Red Urgency Accent:
-  // >15d: #10B981 (Emerald)
-  // 15–5d: #F59E0B (Warm Amber)
-  // <5d: #EF4444 (Urgent Crimson Red) with soft pulse
-  let urgencyAccent = '#A8A29E'; // default / unset
+  // Eye-Comfort Low-Blue Exam Urgency Scale:
+  // >15d: #22C55E (Botanical/Phosphor Green)
+  // 15–5d: #FACC15 (Warm Luminosity Yellow)
+  // <5d: #FB923C (Warm Low-Blue-Light Soft Orange, zero fatiguing pure red)
+  let urgencyAccent = '#A6A29A'; // default / unset
   let isCriticallyUrgent = false;
 
   if (hasExamDate) {
     if (examUrgency.fractionalDays > 15) {
-      urgencyAccent = '#10B981';
+      urgencyAccent = '#22C55E';
     } else if (examUrgency.fractionalDays >= 5) {
-      urgencyAccent = '#F59E0B';
+      urgencyAccent = '#FACC15';
     } else {
-      urgencyAccent = '#EF4444';
+      urgencyAccent = '#FB923C';
       isCriticallyUrgent = true;
     }
   } else if (isPast) {
-    urgencyAccent = '#64748B';
+    urgencyAccent = '#78736A';
   }
 
   const handleBookClick = (unitId?: string) => {
@@ -317,13 +317,13 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
             <div className="flex items-center justify-between text-[11px] font-mono">
               <span className="text-white/90 font-bold">{progressPct}% Mastered</span>
               <div className="flex items-center gap-1.5">
-                <span className="px-1.5 py-0.5 rounded bg-red-950/70 text-red-200 border border-red-700/50 text-[10px]" title="Weak topics">
+                <span className="px-1.5 py-0.5 rounded bg-amber-950/70 text-amber-300 border border-amber-700/50 text-[10px]" title="Weak topics">
                   {weakCount} W
                 </span>
-                <span className="px-1.5 py-0.5 rounded bg-amber-950/70 text-amber-200 border border-amber-700/50 text-[10px]" title="Okay topics">
+                <span className="px-1.5 py-0.5 rounded bg-yellow-950/70 text-yellow-300 border border-yellow-700/50 text-[10px]" title="Okay topics">
                   {okayCount} O
                 </span>
-                <span className="px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-200 border border-emerald-700/50 text-[10px]" title="Strong topics">
+                <span className="px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-300 border border-emerald-700/50 text-[10px]" title="Strong topics">
                   {strongCount} S
                 </span>
               </div>
@@ -339,12 +339,12 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
                     title={`${strongCount} Strong`}
                   />
                   <div 
-                    className="h-full bg-amber-500 transition-all duration-500"
+                    className="h-full bg-yellow-400 transition-all duration-500"
                     style={{ width: `${(okayCount / totalTopics) * 100}%` }}
                     title={`${okayCount} Okay`}
                   />
                   <div 
-                    className="h-full bg-rose-500 transition-all duration-500"
+                    className="h-full bg-amber-500 transition-all duration-500"
                     style={{ width: `${(weakCount / totalTopics) * 100}%` }}
                     title={`${weakCount} Weak`}
                   />
@@ -371,8 +371,8 @@ export const TactileSubjectBook: React.FC<TactileSubjectBookProps> = ({
         <div 
           className="w-5 shrink-0 rounded-r-md border-y border-r border-stone-400/40 h-full"
           style={{
-            background: 'repeating-linear-gradient(90deg, #FBF8F1, #FBF8F1 2px, #E7E5E4 2px, #E7E5E4 4px)',
-            boxShadow: 'inset 3px 0 5px rgba(0,0,0,0.25), 2px 0 0 #E6E0D4, 3px 0 0 #BDB5A6, 5px 0 0 #E6E0D4, 6px 0 0 #BDB5A6'
+            background: 'repeating-linear-gradient(90deg, #F4EFE2, #F4EFE2 2px, #EAE4D5 2px, #EAE4D5 4px)',
+            boxShadow: 'inset 3px 0 5px rgba(26,26,26,0.25), 2px 0 0 #D8D0BE, 3px 0 0 #C4BAA6, 5px 0 0 #D8D0BE, 6px 0 0 #C4BAA6'
           }}
         />
 

@@ -636,7 +636,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                   disabled={isActive}
                   value={settings.shortBreakDuration}
                   onChange={e => handleUpdateShortBreak(parseInt(e.target.value, 10))}
-                  className="w-full text-center px-2 py-1.5 rounded-lg bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs font-bold text-paper-ink dark:text-night-text disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-cyan-500 font-mono"
+                  className="w-full text-center px-2 py-1.5 rounded-lg bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs font-bold text-paper-ink dark:text-night-text disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-amber-500 font-mono"
                 />
                 <button
                   type="button"
@@ -713,7 +713,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                 onClick={() => switchMode('shortBreak')}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all btn-tactile ${
                   mode === 'shortBreak' 
-                    ? 'bg-cyan-600 text-white shadow-xs' 
+                    ? 'bg-amber-600 dark:bg-amber-500 text-stone-950 font-extrabold shadow-xs' 
                     : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
                 }`}
               >
@@ -843,21 +843,21 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
               <button
                 type="button"
                 onClick={() => handleAdjustSeconds(-600)}
-                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-rose-500 hover:border-rose-500/40 active:scale-95 transition-all"
+                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-amber-600 hover:border-amber-500/40 active:scale-95 transition-all"
               >
                 -10m
               </button>
               <button
                 type="button"
                 onClick={() => handleAdjustSeconds(-300)}
-                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-rose-500 hover:border-rose-500/40 active:scale-95 transition-all"
+                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-amber-600 hover:border-amber-500/40 active:scale-95 transition-all"
               >
                 -5m
               </button>
               <button
                 type="button"
                 onClick={() => handleAdjustSeconds(-60)}
-                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-rose-500 hover:border-rose-500/40 active:scale-95 transition-all"
+                className="px-2 py-1 rounded-lg text-[11px] font-mono font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-amber-600 hover:border-amber-500/40 active:scale-95 transition-all"
               >
                 -1m
               </button>
@@ -1093,7 +1093,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                     <div 
                       className={`w-full rounded-lg transition-all duration-500 ${
                         isToday 
-                          ? 'bg-gradient-to-t from-emerald-600 to-cyan-500 shadow-glow-emerald' 
+                          ? 'bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-glow-emerald' 
                           : stat.minutes > 0
                           ? 'bg-emerald-600/70 hover:bg-emerald-600'
                           : 'bg-paper-border dark:bg-night-border/40'
@@ -1170,7 +1170,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
             {onResetTimerData && (
               <button
                 onClick={() => setIsResetConfirmOpen(true)}
-                className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1.5 btn-tactile py-1 px-2 rounded-lg hover:bg-rose-500/10 transition-colors"
+                className="text-xs font-semibold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1.5 btn-tactile py-1 px-2 rounded-lg hover:bg-amber-500/10 transition-colors"
                 title="Reset all timer study sessions back to 0"
               >
                 <Trash2 className="w-3.5 h-3.5" />
