@@ -101,7 +101,10 @@ function DashboardContent() {
   const [tasks, setTasks] = useState<StudyTask[]>(() => storageService.getTasks(activeExamId));
   const [videos, setVideos] = useState<VideoResource[]>(() => storageService.getVideos(activeExamId));
   const [pdfs, setPdfs] = useState<PdfResource[]>(() => storageService.getPdfs(activeExamId));
-  const [topics, setTopics] = useState<SyllabusTopic[]>(() => storageService.getTopics(undefined, activeExamId));
+  const [topics, setTopics] = useState<SyllabusTopic[]>(() => {
+    storageService.normalizeAndDeduplicateData(activeExamId);
+    return storageService.getTopics(undefined, activeExamId);
+  });
   const [flashcards, setFlashcards] = useState<Flashcard[]>(() => storageService.getFlashcards(undefined, activeExamId));
   const [pomodoroLogs, setPomodoroLogs] = useState<PomodoroSession[]>(() => storageService.getPomodoroLogs(activeExamId));
 
@@ -219,6 +222,7 @@ function DashboardContent() {
     setTasks(storageService.getTasks(examId));
     setVideos(storageService.getVideos(examId));
     setPdfs(storageService.getPdfs(examId));
+    storageService.normalizeAndDeduplicateData(examId);
     setTopics(storageService.getTopics(undefined, examId));
     setFlashcards(storageService.getFlashcards(undefined, examId));
     setPomodoroLogs(storageService.getPomodoroLogs(examId));
@@ -603,15 +607,16 @@ function DashboardContent() {
 
   // ==========================================
   // SYLLABUS TOPIC HANDLERS (Requirement 6: Videos, Weak/Okay/Strong, Checkbox)
+  // Scoped strictly by topicId, unitId, and subjectId
   // ==========================================
-  const handleToggleTopicCompleted = (topicId: string) => {
-    const updated = storageService.toggleTopicCompleted(topicId, activeExamId);
+  const handleToggleTopicCompleted = (topicId: string, unitId?: string, subjectId?: string) => {
+    const updated = storageService.toggleTopicCompleted(topicId, activeExamId, unitId, subjectId);
     setTopics(updated);
     broadcastLiveState();
   };
 
-  const handleSetTopicMastery = (topicId: string, mastery: TopicMastery) => {
-    const updated = storageService.setTopicMastery(topicId, mastery, activeExamId);
+  const handleSetTopicMastery = (topicId: string, mastery: TopicMastery, unitId?: string, subjectId?: string) => {
+    const updated = storageService.setTopicMastery(topicId, mastery, activeExamId, unitId, subjectId);
     setTopics(updated);
     showToast(`Marked topic as ${mastery.toUpperCase()}`, 'info');
     broadcastLiveState();
@@ -629,8 +634,8 @@ function DashboardContent() {
     broadcastLiveState();
   };
 
-  const handleDeleteTopic = (topicId: string) => {
-    const updated = storageService.deleteTopic(topicId, activeExamId);
+  const handleDeleteTopic = (topicId: string, unitId?: string, subjectId?: string) => {
+    const updated = storageService.deleteTopic(topicId, activeExamId, unitId, subjectId);
     setTopics(updated);
     showToast('Topic removed from syllabus.', 'info');
     broadcastLiveState();
@@ -648,8 +653,8 @@ function DashboardContent() {
     broadcastLiveState();
   };
 
-  const handleUpdateTopicTitle = (topicId: string, newTitle: string) => {
-    const updated = storageService.updateTopicTitle(topicId, newTitle, activeExamId);
+  const handleUpdateTopicTitle = (topicId: string, newTitle: string, unitId?: string, subjectId?: string) => {
+    const updated = storageService.updateTopicTitle(topicId, newTitle, activeExamId, unitId, subjectId);
     setTopics(updated);
     showToast('Topic title updated!', 'success');
     broadcastLiveState();

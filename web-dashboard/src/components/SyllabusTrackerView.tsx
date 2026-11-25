@@ -36,12 +36,12 @@ interface SyllabusTrackerViewProps {
   highlightedTopicId?: string;
   onSelectSubject: (id: string) => void;
   topics: SyllabusTopic[];
-  onToggleTopicCompleted: (topicId: string) => void;
-  onSetTopicMastery: (topicId: string, mastery: TopicMastery) => void;
+  onToggleTopicCompleted: (topicId: string, unitId?: string, subjectId?: string) => void;
+  onSetTopicMastery: (topicId: string, mastery: TopicMastery, unitId?: string, subjectId?: string) => void;
   onAddTopic: (topic: SyllabusTopic) => void;
   onAddTopics?: (topics: SyllabusTopic[]) => void;
-  onDeleteTopic: (topicId: string) => void;
-  onUpdateTopicTitle?: (topicId: string, newTitle: string) => void;
+  onDeleteTopic: (topicId: string, unitId?: string, subjectId?: string) => void;
+  onUpdateTopicTitle?: (topicId: string, newTitle: string, unitId?: string, subjectId?: string) => void;
   onReorderTopics?: (topics: SyllabusTopic[]) => void;
   onAddTopicVideo?: (topicId: string, videoUrl: string) => void;
   onRemoveTopicVideo?: (topicId: string, videoUrl: string) => void;
@@ -223,12 +223,12 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
   };
 
   // Topic Edit Name (Requirement 7)
-  const handleEditTopicSubmit = (topicId: string, e: React.FormEvent) => {
+  const handleEditTopicSubmit = (topicId: string, unitId: string | undefined, e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!editingTopicTitle.trim()) return;
     if (onUpdateTopicTitle) {
-      onUpdateTopicTitle(topicId, editingTopicTitle.trim());
+      onUpdateTopicTitle(topicId, editingTopicTitle.trim(), unitId, currentSubject.id);
     }
     setEditingTopicId(null);
     setEditingTopicTitle('');
@@ -486,7 +486,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
 
           <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
             {(currentSubject.units || []).map((u, uIdx) => {
-              const uTopics = subjectTopics.filter(t => t.unitId === u.id || t.unitNumber === u.unit || t.unitNumber === u.title);
+              const uTopics = subjectTopics.filter(t => t.unitId === u.id || (!t.unitId && t.unitNumber === u.unit));
               const uDone = uTopics.filter(t => t.completed).length;
               const uPct = uTopics.length > 0 ? Math.round((uDone / uTopics.length) * 100) : 0;
               return (
@@ -652,7 +652,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
         )}
 
         {(currentSubject.units || []).map((unit, unitIdx) => {
-          const unitTopics = subjectTopics.filter(t => t.unitId === unit.id || t.unitNumber === unit.unit || t.unitNumber === unit.title || t.unitNumber === unit.name);
+          const unitTopics = subjectTopics.filter(t => t.unitId === unit.id || (!t.unitId && t.unitNumber === unit.unit));
           const unitCompleted = unitTopics.filter(t => t.completed).length;
           const unitPercent = unitTopics.length > 0 ? Math.round((unitCompleted / unitTopics.length) * 100) : 0;
           const isAddingToThisUnit = isAddingTopicUnitId === unit.id;
@@ -939,7 +939,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onToggleTopicCompleted(topic.id);
+                              onToggleTopicCompleted(topic.id, unit.id, currentSubject.id);
                             }}
                             className="p-1 mt-0.5 sm:mt-0 text-paper-muted hover:text-emerald-600 dark:text-night-muted dark:hover:text-emerald-400 transition-colors btn-tactile shrink-0"
                             title={topic.completed ? 'Mark uncompleted' : 'Mark completed'}
@@ -957,7 +957,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                               onSubmit={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                handleEditTopicSubmit(topic.id, e);
+                                handleEditTopicSubmit(topic.id, unit.id, e);
                               }} 
                               className="flex items-center gap-2 flex-1 min-w-0"
                             >
@@ -1013,7 +1013,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onSetTopicMastery(topic.id, 'weak');
+                                onSetTopicMastery(topic.id, 'weak', unit.id, currentSubject.id);
                               }}
                               className={`px-2 py-0.5 rounded-md transition-all ${
                                 topic.mastery === 'weak'
@@ -1029,7 +1029,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onSetTopicMastery(topic.id, 'okay');
+                                onSetTopicMastery(topic.id, 'okay', unit.id, currentSubject.id);
                               }}
                               className={`px-2 py-0.5 rounded-md transition-all ${
                                 topic.mastery === 'okay'
@@ -1045,7 +1045,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onSetTopicMastery(topic.id, 'strong');
+                                onSetTopicMastery(topic.id, 'strong', unit.id, currentSubject.id);
                               }}
                               className={`px-2 py-0.5 rounded-md transition-all ${
                                 topic.mastery === 'strong'
@@ -1091,7 +1091,11 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setTopicToDelete(topic);
+                              setTopicToDelete({
+                                ...topic,
+                                unitId: topic.unitId || unit.id,
+                                subjectId: topic.subjectId || currentSubject.id
+                              });
                             }}
                             className="p-1.5 text-paper-muted hover:text-rose-600 dark:text-night-muted dark:hover:text-rose-400 rounded-lg hover:bg-paper-card dark:hover:bg-night-card transition-colors opacity-70 group-hover:opacity-100"
                             title="Delete topic"
@@ -1256,7 +1260,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
         onCancel={() => setTopicToDelete(null)}
         onConfirm={() => {
           if (topicToDelete) {
-            onDeleteTopic(topicToDelete.id);
+            onDeleteTopic(topicToDelete.id, topicToDelete.unitId, topicToDelete.subjectId || currentSubject.id);
             setTopicToDelete(null);
           }
         }}

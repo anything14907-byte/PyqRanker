@@ -91,12 +91,12 @@ interface OpenBookBinderProps {
   videos: VideoResource[];
   pdfs: PdfResource[];
   onSelectUnit?: (unitId: string) => void;
-  onToggleTopicCompleted: (topicId: string) => void;
-  onSetTopicMastery: (topicId: string, mastery: TopicMastery) => void;
+  onToggleTopicCompleted: (topicId: string, unitId?: string, subjectId?: string) => void;
+  onSetTopicMastery: (topicId: string, mastery: TopicMastery, unitId?: string, subjectId?: string) => void;
   onAddTopic: (topic: SyllabusTopic) => void;
   onAddTopics?: (topics: SyllabusTopic[]) => void;
-  onDeleteTopic: (topicId: string) => void;
-  onUpdateTopicTitle?: (topicId: string, newTitle: string) => void;
+  onDeleteTopic: (topicId: string, unitId?: string, subjectId?: string) => void;
+  onUpdateTopicTitle?: (topicId: string, newTitle: string, unitId?: string, subjectId?: string) => void;
   onReorderTopics?: (topics: SyllabusTopic[]) => void;
   onAddUnit?: (subjectId: string, unitLabel: string, unitTitle?: string, initialTopics?: string[]) => void;
   onRenameUnit?: (subjectId: string, unitId: string, newLabel: string, newTitle?: string) => void;
@@ -276,8 +276,9 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   const [editingUnitNumber, setEditingUnitNumber] = useState<number>(1);
   const [editingUnitTitle, setEditingUnitTitle] = useState<string>('');
 
-  // Smart Bulk Syllabus Paste Modal State
-  const [bulkPasteUnit, setBulkPasteUnit] = useState<SubjectUnit | null>(null);
+  // Smart Bulk Syllabus Paste Modal State (strictly scoped to activeBulkUnitId)
+  const [bulkPasteTargetUnitId, setBulkPasteTargetUnitId] = useState<string | null>(null);
+  const bulkPasteUnit = useMemo(() => units.find(u => u.id === bulkPasteTargetUnitId) || null, [units, bulkPasteTargetUnitId]);
 
   // New Chapter Full Syllabus Paste State
   const [newUnitSyllabusText, setNewUnitSyllabusText] = useState('');
@@ -482,30 +483,22 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
 
   // Helper to determine whether a topic belongs to a specific chapter/unit
   const isTopicInUnit = useCallback((t: SyllabusTopic, u: SubjectUnit) => {
-    // 1. Direct unit ID match
-    if (t.unitId && (t.unitId === u.id || t.unitId === (u as any).chapterId)) return true;
-    if ((t as any).chapterId && (t as any).chapterId === u.id) return true;
-
-    // 2. Extracted integer number match
-    const tNum = parseUnitNumber(t.unitNumber ?? (t as any).unit ?? (t as any).chapter ?? t.unitId ?? (t as any).chapterId);
-    const uNum = parseUnitNumber(u);
-    if (tNum !== Infinity && uNum !== Infinity && tNum === uNum) return true;
-
-    // 3. Substring number match in ID (e.g. u3 vs unit-3-...)
+    if (!t || !u) return false;
+    // 1. Direct unit ID match: if topic has unitId or chapterId, strictly compare
     if (t.unitId && u.id) {
-      const tMatch = t.unitId.match(/\d+/);
-      const uMatch = u.id.match(/\d+/);
-      if (tMatch && uMatch && parseInt(tMatch[0], 10) === parseInt(uMatch[0], 10)) return true;
+      return t.unitId === u.id || (t as any).chapterId === u.id;
+    }
+    if ((t as any).chapterId && u.id) {
+      return (t as any).chapterId === u.id;
     }
 
-    // 4. Unit title / label match
-    const tLabel = String(t.unitNumber || (t as any).unitLabel || (t as any).unitTitle || '').trim().toLowerCase();
-    const uLabel = String(u.unitLabel || u.unitNumber || '').trim().toLowerCase();
-    const uTitle = String(u.title || u.name || '').trim().toLowerCase();
-    if (tLabel && (tLabel === uLabel || tLabel === uTitle)) return true;
-
-    // 5. Fallback: single unit in subject
-    if (units.length === 1 && (!tNum || tNum === Infinity || tNum === uNum)) return true;
+    // 2. Strict integer number match fallback only when topic has no valid unitId
+    if (!t.unitId || t.unitId === 'undefined' || t.unitId === 'null') {
+      const tNum = typeof t.unitNumber === 'number' ? t.unitNumber : parseUnitNumber(t.unitNumber ?? (t as any).unit);
+      const uNum = typeof u.unit === 'number' ? u.unit : parseUnitNumber(u);
+      if (tNum !== Infinity && uNum !== Infinity && tNum === uNum) return true;
+      if (units.length === 1) return true;
+    }
 
     return false;
   }, [units]);
@@ -828,7 +821,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   const handleSelfGradeQuiz = (mastery: TopicMastery) => {
     const currentQ = quizQuestions[quizIndex];
     if (currentQ && currentQ.topicId) {
-      onSetTopicMastery(currentQ.topicId, mastery);
+      onSetTopicMastery(currentQ.topicId, mastery, currentQ.unitId, subject.id);
     }
     if (quizIndex < quizQuestions.length - 1) {
       setQuizIndex(quizIndex + 1);
@@ -866,19 +859,23 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
     }
   };
 
-  const handleBulkAddTopicsToUnit = (unit: SubjectUnit, parsedTopicTitles: string[]) => {
+  const handleBulkAddTopicsToUnit = (targetUnitId: string, parsedTopicTitles: string[]) => {
     if (!parsedTopicTitles || parsedTopicTitles.length === 0) return;
+    const targetUnit = units.find(u => u.id === targetUnitId);
+    if (!targetUnit) return;
     const now = Date.now();
-    const unitLabel = getUnitDisplayLabel(unit);
-    const unitNum = unit.unit ?? 1;
+    const unitLabel = getUnitDisplayLabel(targetUnit);
+    const unitNum = typeof targetUnit.unit === 'number' ? targetUnit.unit : 1;
 
     const topicObjs: SyllabusTopic[] = parsedTopicTitles.map((tTitle, idx) => ({
-      id: `topic_${now}_${Math.random().toString(36).substring(2, 6)}_${idx}`,
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? `topic_${crypto.randomUUID()}`
+        : `topic_${targetUnit.id}_${now}_${idx}_${Math.random().toString(36).slice(2, 7)}`,
       subjectId: subject.id,
-      unitId: unit.id,
+      unitId: targetUnit.id,
       unitNumber: unitNum,
       unitLabel: unitLabel,
-      title: tTitle,
+      title: tTitle.trim(),
       completed: false,
       mastery: 'weak',
       createdAt: now + idx
@@ -889,7 +886,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
     } else {
       topicObjs.forEach(t => onAddTopic(t));
     }
-    setBulkPasteUnit(null);
+    setBulkPasteTargetUnitId(null);
   };
 
   const handleSaveEditUnit = (e: React.FormEvent) => {
@@ -938,16 +935,19 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
     }
   };
 
-  const handleCreateTopic = (unitId: string, unitIndex: number) => {
+  const handleCreateTopic = (unitId: string, unitIndex?: number) => {
     if (!newTopicTitle.trim()) return;
-    const targetUnit = units[unitIndex] || units.find(u => u.id === unitId);
-    const unitLabel = targetUnit ? getUnitDisplayLabel(targetUnit) : `Unit ${unitIndex + 1}`;
-    const unitNum = targetUnit?.unit ?? (unitIndex + 1);
+    const targetUnit = units.find(u => u.id === unitId) || (typeof unitIndex === 'number' ? units[unitIndex] : undefined);
+    const resolvedUnitId = targetUnit ? targetUnit.id : unitId;
+    const unitLabel = targetUnit ? getUnitDisplayLabel(targetUnit) : `Unit ${(unitIndex ?? 0) + 1}`;
+    const unitNum = targetUnit?.unit ?? ((unitIndex ?? 0) + 1);
 
     const newTopic: SyllabusTopic = {
-      id: `topic_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? `topic_${crypto.randomUUID()}`
+        : `topic_${resolvedUnitId}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       subjectId: subject.id,
-      unitId,
+      unitId: resolvedUnitId,
       unitNumber: unitNum,
       unitLabel,
       title: newTopicTitle.trim(),
@@ -1860,7 +1860,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onToggleTopicCompleted(topic.id);
+                                  onToggleTopicCompleted(topic.id, undefined, subject.id);
                                 }}
                                 className="text-stone-400 hover:text-emerald-500 transition-colors shrink-0"
                                 title={topic.completed ? 'Mark pending' : 'Mark completed'}
@@ -2323,7 +2323,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setBulkPasteUnit(unit)}
+                            onClick={() => setBulkPasteTargetUnitId(unit.id)}
                             className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 border border-amber-500/30 flex items-center gap-1.5 transition-colors shadow-xs"
                             title="Paste an entire unit syllabus paragraph at once"
                           >
@@ -2358,7 +2358,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      onToggleTopicCompleted(topic.id);
+                                      onToggleTopicCompleted(topic.id, unit.id, subject.id);
                                     }}
                                     className="text-stone-400 hover:text-emerald-500 transition-colors shrink-0"
                                     title={topic.completed ? 'Mark pending' : 'Mark completed'}
@@ -2376,7 +2376,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                         e.preventDefault();
                                         e.stopPropagation();
                                         if (editingTopicTitle.trim()) {
-                                          onUpdateTopicTitle?.(topic.id, editingTopicTitle.trim());
+                                          onUpdateTopicTitle?.(topic.id, editingTopicTitle.trim(), unit.id, subject.id);
                                           setEditingTopicId(null);
                                         }
                                       }}
@@ -2463,7 +2463,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        onSetTopicMastery(topic.id, 'weak');
+                                        onSetTopicMastery(topic.id, 'weak', unit.id, subject.id);
                                       }}
                                       className={`px-1.5 py-0.5 rounded font-bold transition-colors ${
                                         isWeak ? 'bg-[#FB923C] text-stone-950 shadow-xs' : 'opacity-60 hover:opacity-100'
@@ -2475,7 +2475,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        onSetTopicMastery(topic.id, 'okay');
+                                        onSetTopicMastery(topic.id, 'okay', unit.id, subject.id);
                                       }}
                                       className={`px-1.5 py-0.5 rounded font-bold transition-colors ${
                                         isOkay ? 'bg-[#FACC15] text-stone-950 shadow-xs' : 'opacity-60 hover:opacity-100'
@@ -2487,7 +2487,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        onSetTopicMastery(topic.id, 'strong');
+                                        onSetTopicMastery(topic.id, 'strong', unit.id, subject.id);
                                       }}
                                       className={`px-1.5 py-0.5 rounded font-bold transition-colors ${
                                         isStrong ? 'bg-[#22C55E] dark:bg-[#4ADE80] text-stone-950 shadow-xs' : 'opacity-60 hover:opacity-100'
@@ -2512,7 +2512,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      onDeleteTopic(topic.id);
+                                      onDeleteTopic(topic.id, unit.id, subject.id);
                                     }}
                                     className="p-1 text-stone-400 hover:text-red-500 transition-colors"
                                   >
@@ -2562,7 +2562,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                           <div className="flex flex-wrap items-center justify-center gap-2">
                             <button
                               type="button"
-                              onClick={() => setBulkPasteUnit(unit)}
+                              onClick={() => setBulkPasteTargetUnitId(unit.id)}
                               className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-stone-950 hover:bg-amber-400 flex items-center gap-1.5 shadow-sm transition-all"
                             >
                               <ClipboardList className="w-3.5 h-3.5" />
@@ -2621,7 +2621,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setBulkPasteUnit(unit);
+                                setBulkPasteTargetUnitId(unit.id);
                               }}
                               className="px-2.5 py-1.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30 text-xs font-bold flex items-center gap-1"
                               title="Paste full unit syllabus at once"
@@ -3746,8 +3746,8 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
           isOpen={!!bulkPasteUnit}
           unitTitle={bulkPasteUnit.title || bulkPasteUnit.name || ''}
           unitLabel={getUnitDisplayLabel(bulkPasteUnit)}
-          onClose={() => setBulkPasteUnit(null)}
-          onAddTopics={(topics) => handleBulkAddTopicsToUnit(bulkPasteUnit, topics)}
+          onClose={() => setBulkPasteTargetUnitId(null)}
+          onAddTopics={(topics) => handleBulkAddTopicsToUnit(bulkPasteUnit.id, topics)}
           onShowToast={onShowToast}
         />
       )}

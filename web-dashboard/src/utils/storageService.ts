@@ -402,28 +402,27 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
   if (!subject) return [];
 
   const raw = subject.units ?? subject.syllabus ?? subject.topics;
+  const subId = subject.id || 'sub';
 
   if (Array.isArray(raw) && raw.length > 0) {
-    const mapped = raw.map((item: any, idx: number) => {
+    const seenIds = new Set<string>();
+    const mapped: SubjectUnit[] = raw.map((item: any, idx: number) => {
+      let derivedId = '';
+      let label = '';
+      let title = '';
+      let num = idx + 1;
+
       if (typeof item === 'string') {
-        const title = item.trim();
-        const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
-        const label = match ? match[1].trim() : undefined;
-        const cleanT = match ? match[2].trim() : title;
-        const numMatch = label?.match(/\d+/);
-        const num = numMatch ? Number(numMatch[0]) : (idx + 1);
-        return {
-          id: `unit-${idx + 1}-${title.replace(/\s+/g, '-').slice(0, 10)}`,
-          unitLabel: label,
-          unit: num,
-          unitNumber: label || cleanT,
-          title: cleanT,
-          name: cleanT
-        };
-      }
-      if (typeof item === 'object' && item !== null) {
-        let label = (item.unitLabel || '').trim();
-        let title = (item.title || item.name || '').trim();
+        const rawTitle = item.trim();
+        const match = rawTitle.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+        label = match ? match[1].trim() : `Unit ${idx + 1}`;
+        title = match ? match[2].trim() : rawTitle;
+        const numMatch = label.match(/\d+/);
+        num = numMatch ? Number(numMatch[0]) : (idx + 1);
+        derivedId = `unit_${subId}_u${num}_${idx + 1}`;
+      } else if (typeof item === 'object' && item !== null) {
+        label = (item.unitLabel || '').trim();
+        title = (item.title || item.name || '').trim();
 
         if (!label) {
           const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
@@ -441,45 +440,76 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
         }
 
         const numMatch = label.match(/\d+/);
-        const derivedNum = item.unit !== undefined ? Number(item.unit) : (numMatch ? Number(numMatch[0]) : (idx + 1));
+        num = item.unit !== undefined && !isNaN(Number(item.unit))
+          ? Number(item.unit)
+          : (numMatch ? Number(numMatch[0]) : (idx + 1));
 
-        return {
-          id: String(item.id || `unit-${idx + 1}-${Date.now()}`),
-          unitLabel: label || undefined,
-          unit: derivedNum,
-          unitNumber: label || item.unitNumber || title,
-          title: title || label || 'Unit',
-          name: title || label || 'Unit'
-        };
+        if (!label) {
+          label = `Unit ${num}`;
+        }
+
+        if (item.id && typeof item.id === 'string' && item.id.trim() && item.id !== 'undefined' && item.id !== 'null') {
+          derivedId = item.id.trim();
+        } else {
+          derivedId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? `unit_${crypto.randomUUID()}`
+            : `unit_${subId}_u${num}_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`;
+        }
+      } else {
+        num = idx + 1;
+        label = `Unit ${num}`;
+        title = `Chapter ${num}`;
+        derivedId = `unit_${subId}_u${num}_${idx + 1}`;
       }
+
+      // Guarantee ID uniqueness within the subject (never undefined, null or duplicate)
+      if (seenIds.has(derivedId)) {
+        derivedId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? `unit_${crypto.randomUUID()}`
+          : `unit_${subId}_u${num}_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`;
+      }
+      seenIds.add(derivedId);
+
+      // Mutate stable unique ID onto original item if object so it can be saved back
+      if (typeof item === 'object' && item !== null) {
+        item.id = derivedId;
+      }
+
       return {
-        id: `u-${idx + 1}`,
-        unitLabel: undefined,
-        unit: idx + 1,
-        unitNumber: 'Unit',
-        title: 'Unit',
-        name: 'Unit'
+        id: derivedId,
+        unitLabel: label,
+        unit: num,
+        unitNumber: num,
+        title: title || label || `Chapter ${num}`,
+        name: title || label || `Chapter ${num}`
       };
     });
+
     return sortUnitsByNumber(mapped);
   }
 
   if (typeof raw === 'string' && raw.trim().length > 0) {
     const lines = raw.split(/\r?\n|,/).map(l => l.trim()).filter(Boolean);
     if (lines.length > 0) {
+      const seenIds = new Set<string>();
       const mapped = lines.map((line, idx) => {
         const match = line.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
-        const label = match ? match[1].trim() : undefined;
+        const label = match ? match[1].trim() : `Unit ${idx + 1}`;
         const cleanTitle = match ? match[2].trim() : line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || line.trim();
         const numMatch = label?.match(/\d+/);
         const num = numMatch ? Number(numMatch[0]) : (idx + 1);
+        let derivedId = `unit_${subId}_u${num}_${idx + 1}`;
+        if (seenIds.has(derivedId)) {
+          derivedId = `unit_${subId}_u${num}_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`;
+        }
+        seenIds.add(derivedId);
         return {
-          id: `u${idx + 1}`,
+          id: derivedId,
           unitLabel: label,
           unit: num,
-          unitNumber: label || cleanTitle,
-          title: cleanTitle || 'Unit',
-          name: cleanTitle || 'Unit'
+          unitNumber: num,
+          title: cleanTitle || `Chapter ${num}`,
+          name: cleanTitle || `Chapter ${num}`
         };
       });
       return sortUnitsByNumber(mapped);
@@ -489,8 +519,10 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
   // Fallback if no units were entered: provide a default Unit 1
   return [
     {
-      id: 'u1',
+      id: `unit_${subId}_u1`,
       unit: 1,
+      unitNumber: 1,
+      unitLabel: 'Unit 1',
       title: 'Core Concepts & Fundamentals',
       name: 'Core Concepts & Fundamentals'
     }
@@ -900,11 +932,24 @@ export const storageService = {
       if (data !== null) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
-          const upgraded = parsed.map((s: any) => ({
-            ...s,
-            accentColor: s.accentColor || ACCENT_PALETTE[0].hex,
-            units: normalizeSubjectUnits(s)
-          }));
+          let needsSave = false;
+          const upgraded = parsed.map((s: any) => {
+            const rawUnits = s.units || [];
+            const normUnits = normalizeSubjectUnits(s);
+            if (JSON.stringify(rawUnits) !== JSON.stringify(normUnits)) {
+              needsSave = true;
+            }
+            return {
+              ...s,
+              accentColor: s.accentColor || ACCENT_PALETTE[0].hex,
+              units: normUnits
+            };
+          });
+          if (needsSave) {
+            try {
+              localStorage.setItem(key, JSON.stringify(upgraded));
+            } catch (e) {}
+          }
           return upgraded;
         }
       }
@@ -1002,8 +1047,12 @@ export const storageService = {
     const finalNum = parsedNum !== Infinity ? parsedNum : getNextMissingUnitNumber(target.units || []);
     const finalLabel = rawLabel ? (/^(unit|chapter|ch|module)\b/i.test(rawLabel) ? rawLabel : `Unit ${rawLabel}`) : `Unit ${finalNum}`;
 
+    const finalUnitId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? `unit_${crypto.randomUUID()}`
+      : `unit_${subjectId}_u${finalNum}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
     const newUnit: SubjectUnit = {
-      id: `unit-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+      id: finalUnitId,
       unitLabel: finalLabel,
       unit: finalNum,
       unitNumber: finalNum,
@@ -1018,12 +1067,14 @@ export const storageService = {
     if (initialTopics && initialTopics.length > 0) {
       const now = Date.now();
       const topicObjs: SyllabusTopic[] = initialTopics.map((tText, idx) => ({
-        id: `topic_${now}_${Math.random().toString(36).substring(2, 6)}_${idx}`,
+        id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? `topic_${crypto.randomUUID()}`
+          : `topic_${newUnit.id}_${now}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
         subjectId,
         unitId: newUnit.id,
         unitNumber: finalNum,
         unitLabel: finalLabel,
-        title: tText,
+        title: tText.trim(),
         completed: false,
         mastery: 'weak',
         createdAt: now + idx
@@ -1077,8 +1128,8 @@ export const storageService = {
     if (!target || !target.units) return subjects;
     target.units = target.units.filter(u => u.id !== unitId);
     this.saveSubjects(subjects, examId);
-    // Also remove topics belonging to this unit
-    const topics = this.getTopics(examId).filter(t => t.unitId !== unitId);
+    // Also remove topics belonging to this unit (strictly scoped to unitId)
+    const topics = this.getTopics(undefined, examId).filter(t => t.unitId !== unitId);
     this.saveTopics(topics, examId);
     return subjects;
   },
@@ -1508,6 +1559,160 @@ export const storageService = {
   // ==========================================
 
   /**
+   * Comprehensive Unit & Topic Isolation Normalizer:
+   * 1. Guarantees every unit in every subject has a unique, stable ID.
+   * 2. Guarantees every topic has a unique ID and is strictly mapped to its parent unitId and subjectId.
+   * 3. Deduplicates any accidental duplicate topics created by previous un-isolated pastes.
+   */
+  normalizeAndDeduplicateData(examId?: string): { subjects: SubjectMeta[]; topics: SyllabusTopic[] } {
+    const activeExam = examId || this.getActiveExam();
+    const subjectsKey = getExamStorageKey(STORAGE_KEYS.SUBJECTS, activeExam);
+    const topicsKey = getExamStorageKey(STORAGE_KEYS.TOPICS, activeExam);
+
+    // 1. Get and normalize all subjects with guaranteed unique unit IDs
+    let subjects = this.getSubjects(activeExam);
+    let subjectsChanged = false;
+
+    subjects = subjects.map(sub => {
+      const normUnits = normalizeSubjectUnits(sub);
+      if (JSON.stringify(sub.units) !== JSON.stringify(normUnits)) {
+        subjectsChanged = true;
+      }
+      return {
+        ...sub,
+        units: normUnits
+      };
+    });
+
+    if (subjectsChanged) {
+      try {
+        localStorage.setItem(subjectsKey, JSON.stringify(subjects));
+      } catch (e) {}
+    }
+
+    // 2. Load all topics
+    let rawTopics: SyllabusTopic[] = [];
+    try {
+      const data = localStorage.getItem(topicsKey);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          rawTopics = parsed;
+        }
+      }
+    } catch (e) {}
+
+    // If empty on mid-sem, try standard topics
+    if (rawTopics.length === 0 && activeExam === 'mid-sem') {
+      const hydrated = this.hydrateAllSavedData(activeExam);
+      rawTopics = hydrated.topics;
+    }
+
+    const seenTopicIds = new Set<string>();
+    const seenSignatures = new Set<string>();
+    const normalizedTopics: SyllabusTopic[] = [];
+
+    // Map units for fast lookup: subId -> Map(unitId -> SubjectUnit)
+    const subUnitsMap = new Map<string, Map<string, SubjectUnit>>();
+    const subUnitsByNumMap = new Map<string, Map<number, SubjectUnit>>();
+    subjects.forEach(sub => {
+      const uMap = new Map<string, SubjectUnit>();
+      const uNumMap = new Map<number, SubjectUnit>();
+      (sub.units || []).forEach(u => {
+        uMap.set(u.id, u);
+        if (typeof u.unit === 'number') {
+          uNumMap.set(u.unit, u);
+        }
+      });
+      subUnitsMap.set(sub.id, uMap);
+      subUnitsByNumMap.set(sub.id, uNumMap);
+    });
+
+    rawTopics.forEach((t, idx) => {
+      if (!t || !t.title || !t.title.trim()) return;
+
+      const title = t.title.trim();
+      const subId = t.subjectId || (subjects[0]?.id || 'os');
+      const uMap = subUnitsMap.get(subId);
+      const uNumMap = subUnitsByNumMap.get(subId);
+
+      // Determine proper unitId
+      let finalUnitId = t.unitId || '';
+      let finalUnitNum = typeof t.unitNumber === 'number' ? t.unitNumber : parseUnitNumber(t.unitNumber);
+
+      // If unitId is invalid or not in subject units, resolve it
+      if (!finalUnitId || !uMap || !uMap.has(finalUnitId)) {
+        if (uNumMap && finalUnitNum !== Infinity && uNumMap.has(finalUnitNum)) {
+          finalUnitId = uNumMap.get(finalUnitNum)!.id;
+        } else if (uMap && uMap.size > 0) {
+          const matchedU = Array.from(uMap.values()).find(u => {
+            if (t.unitId && u.id.includes(t.unitId)) return true;
+            if (t.unitLabel && (u.unitLabel === t.unitLabel || u.title === t.unitLabel)) return true;
+            return false;
+          });
+          if (matchedU) {
+            finalUnitId = matchedU.id;
+            finalUnitNum = typeof matchedU.unit === 'number' ? matchedU.unit : 1;
+          } else {
+            const firstU = Array.from(uMap.values())[0];
+            finalUnitId = firstU.id;
+            finalUnitNum = typeof firstU.unit === 'number' ? firstU.unit : 1;
+          }
+        }
+      }
+
+      // Guarantee unique topic ID
+      let finalTopicId = t.id && typeof t.id === 'string' && t.id.trim() ? t.id.trim() : '';
+      if (!finalTopicId || seenTopicIds.has(finalTopicId)) {
+        finalTopicId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? `topic_${crypto.randomUUID()}`
+          : `topic_${subId}_${finalUnitId}_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`;
+      }
+      seenTopicIds.add(finalTopicId);
+
+      // Deduplication signature: subId + unitId + lowercaseTitle
+      const sig = `${subId}:::${finalUnitId}:::${title.toLowerCase()}`;
+      if (seenSignatures.has(sig)) {
+        const existingIdx = normalizedTopics.findIndex(et => 
+          et.subjectId === subId && et.unitId === finalUnitId && et.title.trim().toLowerCase() === title.toLowerCase()
+        );
+        if (existingIdx >= 0) {
+          const ex = normalizedTopics[existingIdx];
+          if (t.completed && !ex.completed) ex.completed = true;
+          if (t.mastery === 'strong' || (t.mastery === 'okay' && ex.mastery === 'weak')) {
+            ex.mastery = t.mastery;
+          }
+          if (t.notes && !ex.notes) ex.notes = t.notes;
+        }
+        return;
+      }
+      seenSignatures.add(sig);
+
+      const targetUnitObj = uMap?.get(finalUnitId);
+      normalizedTopics.push({
+        ...t,
+        id: finalTopicId,
+        subjectId: subId,
+        unitId: finalUnitId,
+        unitNumber: targetUnitObj ? targetUnitObj.unit : (finalUnitNum !== Infinity ? finalUnitNum : 1),
+        unitLabel: targetUnitObj ? getUnitDisplayLabel(targetUnitObj) : (t.unitLabel || `Unit ${finalUnitNum !== Infinity ? finalUnitNum : 1}`),
+        title,
+        completed: Boolean(t.completed),
+        mastery: (t.mastery === 'strong' || t.mastery === 'okay' || t.mastery === 'weak') ? t.mastery : 'weak',
+        notes: String(t.notes || ''),
+        videoUrls: Array.isArray(t.videoUrls) ? t.videoUrls : ((t as any).videoUrl ? [(t as any).videoUrl] : undefined),
+        createdAt: t.createdAt || (Date.now() + idx)
+      });
+    });
+
+    try {
+      localStorage.setItem(topicsKey, JSON.stringify(normalizedTopics));
+    } catch (e) {}
+
+    return { subjects, topics: normalizedTopics };
+  },
+
+  /**
    * Universal Non-Destructive Data Hydration & Schema Rescuer:
    * Deeply scans localStorage for all topics across all version keys,
    * exam sessions, fallback keys, and embedded subject/unit fields.
@@ -1903,14 +2108,17 @@ export const storageService = {
       console.warn('Error reading topics:', e);
     }
 
-    // If list is empty or hydration has not yet been executed, run universal non-destructive hydrator to rescue any saved topics
-    const hydrationDone = localStorage.getItem('exam_hub_v3_topics_hydrated_v2');
-    if (!hydrationDone || list.length === 0) {
+    // Run unit isolation and deduplication normalizer once or when empty
+    const isolationDone = localStorage.getItem('pyq_unit_isolation_v2');
+    if (!isolationDone) {
+      const res = this.normalizeAndDeduplicateData(activeExam);
+      list = res.topics;
+      try {
+        localStorage.setItem('pyq_unit_isolation_v2', 'true');
+      } catch (e) {}
+    } else if (list.length === 0) {
       const hydrated = this.hydrateAllSavedData(activeExam);
       list = hydrated.topics;
-      try {
-        localStorage.setItem('exam_hub_v3_topics_hydrated_v2', 'true');
-      } catch (e) {}
     }
 
     if (subjectId) {
@@ -1966,30 +2174,58 @@ export const storageService = {
     return topics;
   },
 
-  updateTopicTitle(topicId: string, newTitle: string, examId?: string): SyllabusTopic[] {
+  updateTopicTitle(topicId: string, newTitle: string, examId?: string, unitId?: string, subjectId?: string): SyllabusTopic[] {
     const list = this.getTopics(undefined, examId);
-    const updated = list.map(t => t.id === topicId ? { ...t, title: newTitle.trim() } : t);
+    const updated = list.map(t => {
+      if (t.id === topicId) {
+        if (unitId && t.unitId && t.unitId !== unitId) return t;
+        if (subjectId && t.subjectId && t.subjectId !== subjectId) return t;
+        return { ...t, title: newTitle.trim() };
+      }
+      return t;
+    });
     this.saveTopics(updated, examId);
     return updated;
   },
 
-  deleteTopic(topicId: string, examId?: string): SyllabusTopic[] {
+  deleteTopic(topicId: string, examId?: string, unitId?: string, subjectId?: string): SyllabusTopic[] {
     const list = this.getTopics(undefined, examId);
-    const updated = list.filter(t => t.id !== topicId);
+    const updated = list.filter(t => {
+      if (t.id === topicId) {
+        if (unitId && t.unitId && t.unitId !== unitId) return true;
+        if (subjectId && t.subjectId && t.subjectId !== subjectId) return true;
+        return false;
+      }
+      return true;
+    });
     this.saveTopics(updated, examId);
     return updated;
   },
 
-  toggleTopicCompleted(topicId: string, examId?: string): SyllabusTopic[] {
+  toggleTopicCompleted(topicId: string, examId?: string, unitId?: string, subjectId?: string): SyllabusTopic[] {
     const list = this.getTopics(undefined, examId);
-    const updated = list.map(t => t.id === topicId ? { ...t, completed: !t.completed } : t);
+    const updated = list.map(t => {
+      if (t.id === topicId) {
+        if (unitId && t.unitId && t.unitId !== unitId) return t;
+        if (subjectId && t.subjectId && t.subjectId !== subjectId) return t;
+        return { ...t, completed: !t.completed };
+      }
+      return t;
+    });
     this.saveTopics(updated, examId);
     return updated;
   },
 
-  setTopicMastery(topicId: string, mastery: TopicMastery, examId?: string): SyllabusTopic[] {
+  setTopicMastery(topicId: string, mastery: TopicMastery, examId?: string, unitId?: string, subjectId?: string): SyllabusTopic[] {
     const list = this.getTopics(undefined, examId);
-    const updated = list.map(t => t.id === topicId ? { ...t, mastery } : t);
+    const updated = list.map(t => {
+      if (t.id === topicId) {
+        if (unitId && t.unitId && t.unitId !== unitId) return t;
+        if (subjectId && t.subjectId && t.subjectId !== subjectId) return t;
+        return { ...t, mastery };
+      }
+      return t;
+    });
     this.saveTopics(updated, examId);
     return updated;
   },
