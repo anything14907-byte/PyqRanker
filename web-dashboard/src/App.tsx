@@ -41,7 +41,8 @@ import { Sparkles } from 'lucide-react';
 // ==========================================
 function parseHash(hash: string): { view?: MainNavView; subjectId?: string; unitId?: string } {
   if (!hash) return {};
-  const clean = hash.replace(/^#\/?/, '').trim();
+  const hashWithoutQuery = hash.split('?')[0];
+  const clean = hashWithoutQuery.replace(/^#\/?/, '').trim();
   if (!clean || clean === 'today') {
     return { view: 'today' };
   }
@@ -572,9 +573,12 @@ function DashboardContent() {
   // ==========================================
   // UNIT HANDLERS (Requirement 5: Custom unit title/number, rename, delete, reorder)
   // ==========================================
-  const handleAddUnit = (subjectId: string, unitLabel: string, unitTitle?: string) => {
-    const updated = storageService.addUnit(subjectId, unitLabel, unitTitle, activeExamId);
+  const handleAddUnit = (subjectId: string, unitLabel: string, unitTitle?: string, initialTopics?: string[]) => {
+    const updated = storageService.addUnit(subjectId, unitLabel, unitTitle, activeExamId, initialTopics);
     setSubjects(updated);
+    if (initialTopics && initialTopics.length > 0) {
+      setTopics(storageService.getTopics(undefined, activeExamId));
+    }
     broadcastLiveState();
   };
 
@@ -615,6 +619,12 @@ function DashboardContent() {
 
   const handleAddTopic = (topic: SyllabusTopic) => {
     const updated = storageService.addTopic(topic, activeExamId);
+    setTopics(updated);
+    broadcastLiveState();
+  };
+
+  const handleAddTopics = (newTopics: SyllabusTopic[]) => {
+    const updated = storageService.addTopics(newTopics, activeExamId);
     setTopics(updated);
     broadcastLiveState();
   };
@@ -945,6 +955,7 @@ function DashboardContent() {
               onToggleTopicCompleted={handleToggleTopicCompleted}
               onSetTopicMastery={handleSetTopicMastery}
               onAddTopic={handleAddTopic}
+              onAddTopics={handleAddTopics}
               onDeleteTopic={handleDeleteTopic}
               onUpdateTopicTitle={handleUpdateTopicTitle}
               onReorderTopics={handleReorderTopics}
@@ -979,6 +990,7 @@ function DashboardContent() {
               onToggleTopicCompleted={handleToggleTopicCompleted}
               onSetTopicMastery={handleSetTopicMastery}
               onAddTopic={handleAddTopic}
+              onAddTopics={handleAddTopics}
               onDeleteTopic={handleDeleteTopic}
               onUpdateTopicTitle={handleUpdateTopicTitle}
               onReorderTopics={handleReorderTopics}

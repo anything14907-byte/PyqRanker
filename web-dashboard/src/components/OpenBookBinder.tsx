@@ -60,7 +60,8 @@ import {
   FileUp,
   Image as ImageIcon,
   Brain,
-  Edit2
+  Edit2,
+  ClipboardList
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { 
@@ -78,6 +79,8 @@ import {
   formatImageCategoryBadge 
 } from '../utils/unitImageService';
 import { DiagramLightboxModal } from './DiagramLightboxModal';
+import { BulkSyllabusPasteModal } from './BulkSyllabusPasteModal';
+import { parseSyllabusText } from '../utils/syllabusParser';
 
 interface OpenBookBinderProps {
   subject: SubjectMeta;
@@ -91,10 +94,11 @@ interface OpenBookBinderProps {
   onToggleTopicCompleted: (topicId: string) => void;
   onSetTopicMastery: (topicId: string, mastery: TopicMastery) => void;
   onAddTopic: (topic: SyllabusTopic) => void;
+  onAddTopics?: (topics: SyllabusTopic[]) => void;
   onDeleteTopic: (topicId: string) => void;
   onUpdateTopicTitle?: (topicId: string, newTitle: string) => void;
   onReorderTopics?: (topics: SyllabusTopic[]) => void;
-  onAddUnit?: (subjectId: string, unitLabel: string, unitTitle?: string) => void;
+  onAddUnit?: (subjectId: string, unitLabel: string, unitTitle?: string, initialTopics?: string[]) => void;
   onRenameUnit?: (subjectId: string, unitId: string, newLabel: string, newTitle?: string) => void;
   onDeleteUnit?: (subjectId: string, unitId: string) => void;
   onAddVideo: (video: VideoResource) => void;
@@ -124,6 +128,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   onToggleTopicCompleted,
   onSetTopicMastery,
   onAddTopic,
+  onAddTopics,
   onDeleteTopic,
   onUpdateTopicTitle,
   onReorderTopics,
@@ -271,6 +276,13 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   const [editingUnitNumber, setEditingUnitNumber] = useState<number>(1);
   const [editingUnitTitle, setEditingUnitTitle] = useState<string>('');
 
+  // Smart Bulk Syllabus Paste Modal State
+  const [bulkPasteUnit, setBulkPasteUnit] = useState<SubjectUnit | null>(null);
+
+  // New Chapter Full Syllabus Paste State
+  const [newUnitSyllabusText, setNewUnitSyllabusText] = useState('');
+  const [newUnitParsedTopics, setNewUnitParsedTopics] = useState<string[]>([]);
+
   // Unit Images & Diagrams State (Permanent IndexedDB StudyOS_Unit_Images)
   const [unitImages, setUnitImages] = useState<UnitImageResource[]>([]);
   const [lightboxImageId, setLightboxImageId] = useState<string | null>(null);
@@ -298,6 +310,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
   useEffect(() => {
     reloadImages();
   }, [reloadImages]);
+
 
   // Instant Clipboard Paste Listener (Cmd+V / Ctrl+V)
   useEffect(() => {
@@ -833,16 +846,50 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
     if (!newUnitTitle.trim()) return;
 
     const unitNum = newUnitNumber || getNextMissingUnitNumber(units);
+    const topicsToPass = newUnitParsedTopics.length > 0 ? newUnitParsedTopics : undefined;
 
     if (onAddUnit) {
-      onAddUnit(subject.id, `Unit ${unitNum}`, newUnitTitle.trim());
+      onAddUnit(subject.id, `Unit ${unitNum}`, newUnitTitle.trim(), topicsToPass);
     } else {
-      storageService.addUnit(subject.id, `Unit ${unitNum}`, newUnitTitle.trim());
+      storageService.addUnit(subject.id, `Unit ${unitNum}`, newUnitTitle.trim(), undefined, topicsToPass);
     }
 
     setNewUnitTitle('');
+    setNewUnitSyllabusText('');
+    setNewUnitParsedTopics([]);
     setShowAddUnitInput(false);
-    onShowToast(`Unit ${unitNum}: "${newUnitTitle.trim()}" added to index! 📖`, 'success');
+
+    if (topicsToPass && topicsToPass.length > 0) {
+      onShowToast(`Unit ${unitNum}: "${newUnitTitle.trim()}" created with ${topicsToPass.length} syllabus topics! 🚀`, 'success');
+    } else {
+      onShowToast(`Unit ${unitNum}: "${newUnitTitle.trim()}" added to index! 📖`, 'success');
+    }
+  };
+
+  const handleBulkAddTopicsToUnit = (unit: SubjectUnit, parsedTopicTitles: string[]) => {
+    if (!parsedTopicTitles || parsedTopicTitles.length === 0) return;
+    const now = Date.now();
+    const unitLabel = getUnitDisplayLabel(unit);
+    const unitNum = unit.unit ?? 1;
+
+    const topicObjs: SyllabusTopic[] = parsedTopicTitles.map((tTitle, idx) => ({
+      id: `topic_${now}_${Math.random().toString(36).substring(2, 6)}_${idx}`,
+      subjectId: subject.id,
+      unitId: unit.id,
+      unitNumber: unitNum,
+      unitLabel: unitLabel,
+      title: tTitle,
+      completed: false,
+      mastery: 'weak',
+      createdAt: now + idx
+    }));
+
+    if (onAddTopics) {
+      onAddTopics(topicObjs);
+    } else {
+      topicObjs.forEach(t => onAddTopic(t));
+    }
+    setBulkPasteUnit(null);
   };
 
   const handleSaveEditUnit = (e: React.FormEvent) => {
@@ -1632,10 +1679,22 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
 
                 {/* + Add New Chapter (Unit) */}
                 {showAddUnitInput ? (
-                  <form onSubmit={handleCreateUnit} className="p-3 rounded-xl bg-stone-200 dark:bg-stone-900 border border-amber-500/50 space-y-2">
-                    <div className="text-[10px] font-mono font-bold text-amber-500 uppercase">
-                      New Chapter / Unit
+                  <form onSubmit={handleCreateUnit} className="p-3.5 rounded-xl bg-stone-200 dark:bg-stone-900 border border-amber-500/50 space-y-2.5 shadow-sm">
+                    <div className="text-[10px] font-mono font-bold text-amber-500 uppercase flex items-center justify-between">
+                      <span>New Chapter / Unit</span>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setShowAddUnitInput(false);
+                          setNewUnitSyllabusText('');
+                          setNewUnitParsedTopics([]);
+                        }} 
+                        className="p-0.5 text-stone-400 hover:text-stone-600"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
+
                     <div className="flex items-center gap-2">
                       <div className="w-20">
                         <label className="text-[10px] font-mono font-bold opacity-70">Unit #</label>
@@ -1659,11 +1718,58 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                         />
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button type="submit" className="flex-1 py-1 rounded bg-amber-500 text-stone-950 font-bold text-xs">
-                        Add Chapter
+
+                    {/* Optional Full Unit Syllabus Paste Box */}
+                    <div className="space-y-1 pt-1.5 border-t border-stone-300/60 dark:border-stone-800">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 uppercase flex items-center gap-1">
+                          <ClipboardList className="w-3 h-3 text-amber-500" />
+                          <span>Paste Full Unit Syllabus (Optional)</span>
+                        </label>
+                        {newUnitParsedTopics.length > 0 && (
+                          <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                            {newUnitParsedTopics.length} topics detected
+                          </span>
+                        )}
+                      </div>
+                      <textarea
+                        rows={2}
+                        placeholder="Paste unit paragraph (e.g. Process States, Schedulers: Long, Short, Deadlocks)..."
+                        value={newUnitSyllabusText}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewUnitSyllabusText(val);
+                          setNewUnitParsedTopics(parseSyllabusText(val));
+                        }}
+                        className="w-full px-2.5 py-1.5 text-[11px] font-mono rounded-lg bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100 resize-none focus:outline-none focus:border-amber-500"
+                      />
+                      {newUnitParsedTopics.length > 0 && (
+                        <div className="p-2 rounded-lg bg-stone-100 dark:bg-stone-950 border border-amber-500/30 max-h-24 overflow-y-auto space-y-0.5">
+                          <div className="text-[9px] font-mono font-bold text-amber-600 uppercase">
+                            Auto-Distributor Live Preview ({newUnitParsedTopics.length}):
+                          </div>
+                          <ol className="list-decimal pl-4 text-[10px] text-stone-700 dark:text-stone-300 font-serif">
+                            {newUnitParsedTopics.map((pt, pti) => (
+                              <li key={pti} className="truncate">{pt}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button type="submit" className="flex-1 py-1.5 rounded-lg bg-amber-500 text-stone-950 font-bold text-xs shadow-xs hover:bg-amber-400 transition-colors">
+                        {newUnitParsedTopics.length > 0 ? `Add Chapter + ${newUnitParsedTopics.length} Topics` : 'Add Chapter'}
                       </button>
-                      <button type="button" onClick={() => setShowAddUnitInput(false)} className="p-1 text-stone-400">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setShowAddUnitInput(false);
+                          setNewUnitSyllabusText('');
+                          setNewUnitParsedTopics([]);
+                        }} 
+                        className="p-1.5 text-stone-400 hover:text-stone-600"
+                      >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -2210,18 +2316,29 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                         A. SYLLABUS TOPICS & SUBTOPICS
                         ----------------------------------------------------------------- */}
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <h4 className="text-xs font-mono font-black tracking-wider uppercase text-amber-600 dark:text-amber-400">
                           A. Syllabus Topics & Subtopics ({cTopics.length})
                         </h4>
-                        <button
-                          type="button"
-                          onClick={() => setAddTopicUnitId(addTopicUnitId === unit.id ? null : unit.id)}
-                          className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add Topic</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setBulkPasteUnit(unit)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 border border-amber-500/30 flex items-center gap-1.5 transition-colors shadow-xs"
+                            title="Paste an entire unit syllabus paragraph at once"
+                          >
+                            <ClipboardList className="w-3.5 h-3.5 text-amber-500" />
+                            <span>📋 Bulk Paste Unit Syllabus</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAddTopicUnitId(addTopicUnitId === unit.id ? null : unit.id)}
+                            className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Topic</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Topic rows with dotted leader lines */}
@@ -2445,18 +2562,26 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                           <div className="flex flex-wrap items-center justify-center gap-2">
                             <button
                               type="button"
+                              onClick={() => setBulkPasteUnit(unit)}
+                              className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-stone-950 hover:bg-amber-400 flex items-center gap-1.5 shadow-sm transition-all"
+                            >
+                              <ClipboardList className="w-3.5 h-3.5" />
+                              <span>📋 Bulk Paste Unit Syllabus</span>
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => setAddTopicUnitId(unit.id)}
                               className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30 flex items-center gap-1.5 transition-colors"
                             >
                               <Plus className="w-3.5 h-3.5" />
-                              <span>Add Topic</span>
+                              <span>Add Single Topic</span>
                             </button>
                             <button
                               type="button"
                               onClick={handleAutoFillSyllabus}
-                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-stone-950 hover:bg-amber-400 flex items-center gap-1.5 shadow-sm transition-all"
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-stone-200 dark:bg-stone-800 text-stone-800 dark:text-stone-200 hover:bg-stone-300 flex items-center gap-1.5 shadow-sm transition-all"
                             >
-                              <Sparkles className="w-3.5 h-3.5" />
+                              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                               <span>✨ Auto-Fill Standard Topics</span>
                             </button>
                           </div>
@@ -2465,7 +2590,7 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
 
                       {/* Inline Input to Add Topic */}
                       {addTopicUnitId === unit.id && (
-                        <div className="flex items-center gap-2 p-2 rounded-xl bg-stone-200/80 dark:bg-stone-900 border border-amber-500/40">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded-xl bg-stone-200/80 dark:bg-stone-900 border border-amber-500/40">
                           <input 
                             type="text" 
                             autoFocus
@@ -2479,28 +2604,42 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
                                 handleCreateTopic(unit.id, uIndex);
                               }
                             }}
-                            className="flex-1 px-3 py-1.5 rounded text-xs bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700"
+                            className="flex-1 px-3 py-1.5 rounded text-xs bg-white dark:bg-stone-950 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                           />
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCreateTopic(unit.id, uIndex);
-                            }}
-                            className="px-3 py-1.5 rounded bg-amber-500 text-stone-950 font-bold text-xs"
-                          >
-                            Add
-                          </button>
-                          <button 
-                            type="button" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setAddTopicUnitId(null);
-                            }} 
-                            className="p-1 text-stone-400"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCreateTopic(unit.id, uIndex);
+                              }}
+                              className="px-3 py-1.5 rounded bg-amber-500 text-stone-950 font-bold text-xs hover:bg-amber-400"
+                            >
+                              Add
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBulkPasteUnit(unit);
+                              }}
+                              className="px-2.5 py-1.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30 text-xs font-bold flex items-center gap-1"
+                              title="Paste full unit syllabus at once"
+                            >
+                              <ClipboardList className="w-3.5 h-3.5" />
+                              <span>📋 Bulk Paste</span>
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAddTopicUnitId(null);
+                              }} 
+                              className="p-1 text-stone-400 hover:text-stone-600"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -3597,6 +3736,20 @@ export const OpenBookBinder: React.FC<OpenBookBinderProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* =========================================================================
+          SMART BULK SYLLABUS PASTE & AUTO-DISTRIBUTOR MODAL
+          ========================================================================= */}
+      {bulkPasteUnit && (
+        <BulkSyllabusPasteModal
+          isOpen={!!bulkPasteUnit}
+          unitTitle={bulkPasteUnit.title || bulkPasteUnit.name || ''}
+          unitLabel={getUnitDisplayLabel(bulkPasteUnit)}
+          onClose={() => setBulkPasteUnit(null)}
+          onAddTopics={(topics) => handleBulkAddTopicsToUnit(bulkPasteUnit, topics)}
+          onShowToast={onShowToast}
+        />
       )}
 
     </div>

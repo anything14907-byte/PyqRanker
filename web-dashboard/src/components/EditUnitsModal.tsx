@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { SubjectMeta, SubjectUnit } from '../types';
-import { X, Plus, Trash2, BookOpen, ArrowUp, ArrowDown } from 'lucide-react';
+import { SubjectMeta, SubjectUnit, SyllabusTopic } from '../types';
+import { X, Plus, Trash2, BookOpen, ArrowUp, ArrowDown, ClipboardList } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
-import { formatUnitDisplayName } from '../utils/storageService';
+import { formatUnitDisplayName, storageService } from '../utils/storageService';
+import { parseSyllabusText } from '../utils/syllabusParser';
 
 interface EditUnitsModalProps {
   subject: SubjectMeta;
@@ -21,6 +22,8 @@ export const EditUnitsModal: React.FC<EditUnitsModalProps> = ({
   const [newLabel, setNewLabel] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
+  const [syllabusText, setSyllabusText] = useState('');
+  const [parsedTopics, setParsedTopics] = useState<string[]>([]);
 
   useEffect(() => {
     if (subject && subject.units) {
@@ -97,9 +100,27 @@ export const EditUnitsModal: React.FC<EditUnitsModalProps> = ({
       unitNumber: label
     };
 
+    if (parsedTopics.length > 0) {
+      const now = Date.now();
+      const topicObjs: SyllabusTopic[] = parsedTopics.map((tText, idx) => ({
+        id: `topic_${now}_${Math.random().toString(36).substring(2, 6)}_${idx}`,
+        subjectId: subject.id,
+        unitId: newUnit.id,
+        unitNumber: typeof newUnit.unitNumber === 'number' ? newUnit.unitNumber : units.length + 1,
+        unitLabel: label,
+        title: tText,
+        completed: false,
+        mastery: 'weak',
+        createdAt: now + idx
+      }));
+      storageService.addTopics(topicObjs);
+    }
+
     setUnits(prev => [...prev, newUnit]);
     setNewLabel('');
     setNewTitle('');
+    setSyllabusText('');
+    setParsedTopics([]);
   };
 
   const handleSave = () => {
@@ -203,8 +224,8 @@ export const EditUnitsModal: React.FC<EditUnitsModalProps> = ({
           )}
         </div>
 
-        {/* Add New Unit Form with Two Separate Inputs */}
-        <form onSubmit={handleAddUnit} className="mt-4 pt-3 border-t border-paper-border dark:border-night-border space-y-2">
+        {/* Add New Unit Form with Two Separate Inputs & Optional Bulk Paste */}
+        <form onSubmit={handleAddUnit} className="mt-4 pt-3 border-t border-paper-border dark:border-night-border space-y-2.5">
           <div className="text-[11px] font-bold text-paper-muted dark:text-night-muted">
             + Add New Unit (Separate Label & Title)
           </div>
@@ -214,23 +235,60 @@ export const EditUnitsModal: React.FC<EditUnitsModalProps> = ({
               placeholder="Label (e.g. Unit 3)"
               value={newLabel}
               onChange={e => setNewLabel(e.target.value)}
-              className="w-28 sm:w-32 px-3 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-mono font-bold text-paper-ink dark:text-night-text placeholder-paper-muted dark:placeholder-night-muted focus:outline-none focus:border-emerald-500 shrink-0"
+              className="w-28 sm:w-32 px-3 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-mono font-bold text-paper-ink dark:text-night-text placeholder-paper-muted dark:placeholder-night-muted focus:outline-none focus:border-amber-500 shrink-0"
             />
             <input
               type="text"
               placeholder="Unit Title (e.g. Memory Management, Virtualization)..."
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
-              className="flex-1 px-3.5 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text placeholder-paper-muted dark:placeholder-night-muted focus:outline-none focus:border-emerald-500 font-medium"
+              className="flex-1 px-3.5 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text placeholder-paper-muted dark:placeholder-night-muted focus:outline-none focus:border-amber-500 font-medium"
             />
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 btn-tactile shadow-sm shrink-0"
-              style={{ backgroundColor: subject.accentColor }}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-stone-950 bg-amber-500 hover:bg-amber-400 flex items-center gap-1.5 btn-tactile shadow-sm shrink-0"
             >
               <Plus className="w-4 h-4" />
-              <span>Add</span>
+              <span>{parsedTopics.length > 0 ? `Add + ${parsedTopics.length} Topics` : 'Add'}</span>
             </button>
+          </div>
+
+          {/* Optional Paste Full Unit Syllabus */}
+          <div className="space-y-1 pt-1 border-t border-paper-border/60 dark:border-night-border/60">
+            <div className="flex items-center justify-between text-[10px] font-mono font-bold text-paper-muted dark:text-night-muted">
+              <span className="flex items-center gap-1">
+                <ClipboardList className="w-3 h-3 text-amber-500" />
+                <span>Paste Full Unit Syllabus (Optional)</span>
+              </span>
+              {parsedTopics.length > 0 && (
+                <span className="text-amber-600 dark:text-amber-400">
+                  {parsedTopics.length} topics detected
+                </span>
+              )}
+            </div>
+            <textarea
+              rows={2}
+              placeholder="Paste entire unit syllabus paragraph to auto-populate topics upon adding..."
+              value={syllabusText}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSyllabusText(val);
+                setParsedTopics(parseSyllabusText(val));
+              }}
+              className="w-full px-3 py-1.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-mono text-paper-ink dark:text-night-text placeholder-paper-muted dark:placeholder-night-muted resize-none focus:outline-none focus:border-amber-500"
+            />
+            {parsedTopics.length > 0 && (
+              <div className="p-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-amber-500/30 max-h-20 overflow-y-auto space-y-0.5">
+                <div className="text-[9px] font-mono font-bold text-amber-600 uppercase">
+                  Auto-Distributor Live Preview ({parsedTopics.length}):
+                </div>
+                <ol className="list-decimal pl-4 text-[10px] text-paper-muted dark:text-night-muted font-serif">
+                  {parsedTopics.map((pt, pti) => (
+                    <li key={pti} className="truncate">{pt}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
           </div>
         </form>
 

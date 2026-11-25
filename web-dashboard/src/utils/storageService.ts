@@ -981,7 +981,7 @@ export const storageService = {
   },
 
   // UNITS: ADD, RENAME, DELETE, REORDER WITH AUTOMATIC NUMERICAL SEQUENCE SORTING (1, 2, 3, 4)
-  addUnit(subjectId: string, unitLabelOrNumber: string | number, unitTitle?: string, examId?: string): SubjectMeta[] {
+  addUnit(subjectId: string, unitLabelOrNumber: string | number, unitTitle?: string, examId?: string, initialTopics?: string[]): SubjectMeta[] {
     const subjects = this.getSubjects(examId);
     const target = subjects.find(s => s.id === subjectId);
     if (!target) return subjects;
@@ -1013,6 +1013,24 @@ export const storageService = {
 
     target.units = sortUnitsByNumber([...(target.units || []), newUnit]);
     this.saveSubjects(subjects, examId);
+
+    // If initialTopics were passed in (e.g. from Bulk Paste), persist them immediately
+    if (initialTopics && initialTopics.length > 0) {
+      const now = Date.now();
+      const topicObjs: SyllabusTopic[] = initialTopics.map((tText, idx) => ({
+        id: `topic_${now}_${Math.random().toString(36).substring(2, 6)}_${idx}`,
+        subjectId,
+        unitId: newUnit.id,
+        unitNumber: finalNum,
+        unitLabel: finalLabel,
+        title: tText,
+        completed: false,
+        mastery: 'weak',
+        createdAt: now + idx
+      }));
+      this.addTopics(topicObjs, examId);
+    }
+
     return subjects;
   },
 
@@ -1924,6 +1942,14 @@ export const storageService = {
   addTopic(topic: SyllabusTopic, examId?: string): SyllabusTopic[] {
     const list = this.getTopics(undefined, examId);
     const updated = [...list, topic];
+    this.saveTopics(updated, examId);
+    return updated;
+  },
+
+  addTopics(newTopics: SyllabusTopic[], examId?: string): SyllabusTopic[] {
+    if (!newTopics || newTopics.length === 0) return this.getTopics(undefined, examId);
+    const list = this.getTopics(undefined, examId);
+    const updated = [...list, ...newTopics];
     this.saveTopics(updated, examId);
     return updated;
   },

@@ -39,12 +39,13 @@ interface SyllabusTrackerViewProps {
   onToggleTopicCompleted: (topicId: string) => void;
   onSetTopicMastery: (topicId: string, mastery: TopicMastery) => void;
   onAddTopic: (topic: SyllabusTopic) => void;
+  onAddTopics?: (topics: SyllabusTopic[]) => void;
   onDeleteTopic: (topicId: string) => void;
   onUpdateTopicTitle?: (topicId: string, newTitle: string) => void;
   onReorderTopics?: (topics: SyllabusTopic[]) => void;
   onAddTopicVideo?: (topicId: string, videoUrl: string) => void;
   onRemoveTopicVideo?: (topicId: string, videoUrl: string) => void;
-  onAddUnit: (subjectId: string, unitLabel: string, unitTitle?: string) => void;
+  onAddUnit: (subjectId: string, unitLabel: string, unitTitle?: string, initialTopics?: string[]) => void;
   onRenameUnit?: (subjectId: string, unitId: string, newLabel: string, newTitle?: string) => void;
   onDeleteUnit?: (subjectId: string, unitId: string) => void;
   onReorderUnit?: (subjectId: string, unitId: string, direction: 'up' | 'down') => void;
@@ -63,6 +64,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
   onToggleTopicCompleted,
   onSetTopicMastery,
   onAddTopic,
+  onAddTopics,
   onDeleteTopic,
   onUpdateTopicTitle,
   onReorderTopics,
